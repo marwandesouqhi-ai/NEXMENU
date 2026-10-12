@@ -1,0 +1,12 @@
+# NEXMENU Robots Configuration
+User-agent: *
+Allow: /
+Allow: /r/
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /login
+Disallow: /signup
+Disallow: /reset-password
+Disallow: /onboarding
+
+Sitemap: https://nexmenu.local/sitemap.xml

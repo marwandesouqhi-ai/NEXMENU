@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import type { Product } from "@/types/domain";
+import { useSeo } from "@/utils/useSeo";
+import { buildRestaurantJsonLd } from "@/utils/seo";
 
 type BrandStyle = CSSProperties & Record<`--menu-${string}`, string>;
 const formatPrice = (price: number, currency: string, locale: string) =>
@@ -38,13 +40,33 @@ export default function PublicMenuPage() {
     addEventListener("online", update); addEventListener("offline", update);
     return () => { removeEventListener("online", update); removeEventListener("offline", update); };
   }, []);
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const canonicalUrl = `${origin}/r/${restaurantSlug}${branch ? `?branch=${branch}` : ""}`;
+  const title = menu
+    ? `${locale === "ar" ? menu.restaurant.name_ar : menu.restaurant.name_en} | Digital Menu`
+    : "NEXMENU | Digital Menu";
+  const seoDescription = menu
+    ? (locale === "ar" ? menu.restaurant.description_ar : menu.restaurant.description_en) || "Browse our digital menu on NEXMENU"
+    : "Browse digital menu on NEXMENU";
+  const image = menu?.restaurant.cover_url || menu?.restaurant.logo_url;
+
+  const jsonLd = useMemo(() => {
+    if (!menu) return undefined;
+    return buildRestaurantJsonLd(menu, origin, locale);
+  }, [menu, origin, locale]);
+
+  useSeo({
+    title,
+    description: seoDescription,
+    canonicalUrl,
+    image,
+    ogType: "restaurant.menu",
+    twitterCard: "summary_large_image",
+    jsonLd,
+  });
+
   useEffect(() => {
     if (!menu) return;
-    document.title = `${locale === "ar" ? menu.restaurant.name_ar : menu.restaurant.name_en} | Digital Menu`;
-    const description = locale === "ar" ? menu.restaurant.description_ar : menu.restaurant.description_en;
-    let meta = document.querySelector<HTMLMetaElement>('meta[name="description"]');
-    if (!meta) { meta = document.createElement("meta"); meta.name = "description"; document.head.append(meta); }
-    meta.content = description;
     const key = `nexmenu-view:${menu.restaurant.id}:${location.key}`;
     if (!sessionStorage.getItem(key)) {
       sessionStorage.setItem(key, "1");

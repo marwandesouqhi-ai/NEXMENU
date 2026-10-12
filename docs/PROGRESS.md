@@ -123,7 +123,31 @@
 
 ## Phase 3: SEO
 
-**Status: NOT STARTED**
+**Status: COMPLETED**
+**Date: 2026-10-12**
+
+### Work Done
+1. **SEO & Structured Data Utilities (`src/utils/seo.ts`):**
+   - Built `buildRestaurantJsonLd`: generates schema.org `Restaurant` structured data including name, description, address, geo coordinates, `openingHoursSpecification`, and complete nested `Menu` -> `MenuSection` -> `MenuItem` hierarchy.
+   - Built `pruneUndefined`: recursively cleans schema objects so undefined, null, or blank strings are omitted from JSON-LD.
+   - Built `buildOpeningHoursSpecification`: maps day-by-day restaurant operating hours and shifts to schema.org URLs (`https://schema.org/Monday`, etc.).
+   - Built `buildMetaTags`: constructs canonical, OpenGraph (`og:title`, `og:description`, `og:image`, `og:url`, `og:type`), and Twitter Card tags.
+2. **Dynamic React Hook (`src/utils/useSeo.ts`):**
+   - Automatically synchronizes `document.title`, `<link rel="canonical">`, `<meta>` OpenGraph / Twitter tags, and `<script type="application/ld+json" id="nexmenu-jsonld">`.
+3. **Public Menu Integration (`src/pages/PublicMenuPage.tsx`):**
+   - Dynamically binds restaurant profile, branch address, logo/cover image, and menu items to route meta and JSON-LD.
+4. **Robots Policy & Crawler Architecture (`public/robots.txt`, `docs/SEO_AND_CRAWLERS.md`):**
+   - Added `robots.txt` permitting public menus (`/r/*`) and landing (`/`), while blocking private paths (`/admin`, `/dashboard`, `/auth`, `/reset-password`).
+   - Documented SPA crawler limitations and a production edge proxy architecture (Vercel Edge Function / Cloudflare Worker) to serve server-rendered OG tags and JSON-LD to scrapers without executing client-side JavaScript.
+5. **Tests:**
+   - 5 comprehensive unit tests in `src/utils/seo.test.ts` covering prune utilities, opening hours mappings, complete JSON-LD menu trees, and Arabic localization.
+   - Total test suite grew from 31 to 36 tests, all passing.
+
+### Verified
+- [x] `pnpm typecheck` passed (0 errors)
+- [x] `pnpm lint` passed (0 errors)
+- [x] `pnpm test` passed (36 tests)
+- [x] `pnpm build` passed
 
 ---
 
