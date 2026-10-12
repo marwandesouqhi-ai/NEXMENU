@@ -15,6 +15,7 @@ import { ErrorState, LoadingState } from "@/components/ui/States";
 import type { Product } from "@/types/domain";
 import { useSeo } from "@/utils/useSeo";
 import { buildRestaurantJsonLd } from "@/utils/seo";
+import { getSafeBrandingColors } from "@/utils/contrast";
 
 type BrandStyle = CSSProperties & Record<`--menu-${string}`, string>;
 const formatPrice = (price: number, currency: string, locale: string) =>
@@ -100,7 +101,14 @@ export default function PublicMenuPage() {
   if (menu.restaurant.menu_status !== "PUBLISHED") return <ErrorState title={menu.restaurant.menu_status === "PAUSED" ? "Menu temporarily unavailable" : "Menu coming soon"} body={menu.restaurant.menu_status === "PAUSED" ? "The restaurant has paused this menu for now." : "This restaurant is still preparing its digital menu."} />;
   const open = isRestaurantOpen(menu.branch?.opening_hours ?? menu.settings.opening_hours, menu.restaurant.timezone);
   const selectedProduct = productId ? menu.products.find((item) => item.id === productId) : undefined;
-  const brandStyle: BrandStyle = { "--menu-accent": menu.branding.primary_color, "--menu-secondary": menu.branding.secondary_color, "--menu-bg": menu.branding.background_color, "--menu-text": menu.branding.text_color };
+  const safeBranding = getSafeBrandingColors(menu.branding);
+  const brandStyle: BrandStyle = {
+    "--menu-accent": menu.branding.primary_color,
+    "--menu-secondary": menu.branding.secondary_color,
+    "--menu-bg": menu.branding.background_color,
+    "--menu-text": safeBranding.safeTextColor,
+    "--menu-btn-text": safeBranding.safeButtonTextColor,
+  };
   const name = locale === "ar" ? menu.restaurant.name_ar : menu.restaurant.name_en;
   const description = locale === "ar" ? menu.restaurant.description_ar : menu.restaurant.description_en;
   return <div className="min-h-screen bg-[var(--menu-surround)]">
@@ -122,12 +130,12 @@ export default function PublicMenuPage() {
       <section className="relative z-10 -mt-1 rounded-t-[2rem] bg-[var(--menu-bg)] px-4 pb-24 pt-5 sm:px-7">
         <div className="flex items-center gap-2">
           <label className="relative min-w-0 flex-1"><span className="sr-only">{t("search")}</span><Search className="absolute start-4 top-1/2 size-4 -translate-y-1/2 opacity-50" /><input value={term} onChange={(e) => setTerm(e.target.value)} placeholder={t("search")} className="min-h-12 w-full rounded-2xl border border-black/5 bg-white/70 pe-10 ps-11 text-sm outline-none ring-[var(--menu-accent)] placeholder:opacity-50 focus:ring-2" />{term && <button type="button" onClick={() => setTerm("")} className="absolute end-1 top-1/2 grid size-10 -translate-y-1/2 place-items-center" aria-label="Clear search"><X className="size-4" /></button>}</label>
-          <button type="button" onClick={() => setFilter(filter === "all" ? "featured" : filter === "featured" ? "popular" : filter === "popular" ? "available" : "all")} className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[var(--menu-accent)] text-white" aria-label={`Filter: ${filter}`}><SlidersHorizontal className="size-4" /></button>
+          <button type="button" onClick={() => setFilter(filter === "all" ? "featured" : filter === "featured" ? "popular" : filter === "popular" ? "available" : "all")} className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[var(--menu-accent)] text-[var(--menu-btn-text,#ffffff)]" aria-label={`Filter: ${filter}`}><SlidersHorizontal className="size-4" /></button>
         </div>
         <nav aria-label="Menu categories" className="sticky top-0 z-30 -mx-4 mt-5 overflow-x-auto bg-[var(--menu-bg)]/95 px-4 py-3 backdrop-blur sm:-mx-7 sm:px-7">
-          <div className="flex w-max gap-2"><button type="button" onClick={() => setCategory("all")} className={category === "all" ? "min-h-11 rounded-full bg-[var(--menu-accent)] px-4 text-sm font-bold text-white" : "min-h-11 rounded-full bg-white/70 px-4 text-sm font-bold"}>{t("menu")}</button>{menu.categories.map((item) => <button type="button" key={item.id} onClick={() => { setCategory(item.id); void publicMenuService.track({ restaurant_id: menu.restaurant.id, branch_id: menu.branch?.id, event_type: "category_view", entity_id: item.id, language: locale, device_class: innerWidth >= 600 ? "tablet" : "mobile", source }); }} className={category === item.id ? "min-h-11 rounded-full bg-[var(--menu-accent)] px-4 text-sm font-bold text-white" : "min-h-11 rounded-full bg-white/70 px-4 text-sm font-bold"}>{locale === "ar" ? item.name_ar : item.name_en}</button>)}</div>
+          <div className="flex w-max gap-2"><button type="button" onClick={() => setCategory("all")} className={category === "all" ? "min-h-11 rounded-full bg-[var(--menu-accent)] px-4 text-sm font-bold text-[var(--menu-btn-text,#ffffff)]" : "min-h-11 rounded-full bg-white/70 px-4 text-sm font-bold"}>{t("menu")}</button>{menu.categories.map((item) => <button type="button" key={item.id} onClick={() => { setCategory(item.id); void publicMenuService.track({ restaurant_id: menu.restaurant.id, branch_id: menu.branch?.id, event_type: "category_view", entity_id: item.id, language: locale, device_class: innerWidth >= 600 ? "tablet" : "mobile", source }); }} className={category === item.id ? "min-h-11 rounded-full bg-[var(--menu-accent)] px-4 text-sm font-bold text-[var(--menu-btn-text,#ffffff)]" : "min-h-11 rounded-full bg-white/70 px-4 text-sm font-bold"}>{locale === "ar" ? item.name_ar : item.name_en}</button>)}</div>
         </nav>
-        {menu.offers.length > 0 && <div className="my-5 rounded-2xl bg-[var(--menu-accent)] p-5 text-white"><p className="text-xs font-black uppercase tracking-[.15em] opacity-60">LIMITED OFFER</p><p className="mt-2 text-xl font-black">{locale === "ar" ? menu.offers[0].title_ar : menu.offers[0].title_en}</p><p className="mt-1 text-sm opacity-75">{locale === "ar" ? menu.offers[0].description_ar : menu.offers[0].description_en}</p></div>}
+        {menu.offers.length > 0 && <div className="my-5 rounded-2xl bg-[var(--menu-accent)] p-5 text-[var(--menu-btn-text,#ffffff)]"><p className="text-xs font-black uppercase tracking-[.15em] opacity-60">LIMITED OFFER</p><p className="mt-2 text-xl font-black">{locale === "ar" ? menu.offers[0].title_ar : menu.offers[0].title_en}</p><p className="mt-1 text-sm opacity-75">{locale === "ar" ? menu.offers[0].description_ar : menu.offers[0].description_en}</p></div>}
         {products.length ? <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-2 sm:gap-5 md:grid-cols-3">
           {products.map((product) => <ProductCard key={product.id} product={product} currency={menu.restaurant.currency} locale={locale} onOpen={() => { void publicMenuService.track({ restaurant_id: menu.restaurant.id, branch_id: menu.branch?.id, event_type: "product_view", entity_id: product.id, language: locale, device_class: innerWidth >= 600 ? "tablet" : "mobile", source }); navigate(`/r/${restaurantSlug}/p/${product.id}${location.search}`); }} />)}
         </div> : <div className="py-20 text-center"><Search className="mx-auto size-7 opacity-30" /><p className="mt-3 font-bold">No matching dishes</p><p className="mt-1 text-sm opacity-60">Try another category or search term.</p></div>}

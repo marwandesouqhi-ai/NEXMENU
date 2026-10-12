@@ -19,6 +19,7 @@ import type { Branding, Category, Product } from "@/types/domain";
 import { PLANS } from "@/config/plans";
 import { ImageUploader } from "@/components/shared/ImageUploader";
 import { ReorderableControls } from "@/components/shared/ReorderableControls";
+import { evaluateContrast } from "@/utils/contrast";
 
 export default function DashboardPage() {
   const { section = "overview" } = useParams();
@@ -422,10 +423,180 @@ function QrManager({ data }: { data: Details }) {
   return <div className="grid gap-6 lg:grid-cols-[.85fr_1.15fr]"><Card className="p-6"><p className="text-sm font-bold text-[var(--accent)]">MENU QR</p><h2 className="mt-2 text-2xl font-black">One scan to your menu</h2><p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">Generate a QR for your main menu or a branch. Every scan opens the public menu directly.</p><div className="mt-6 grid gap-2"><Button onClick={() => void generate()}><QrIcon className="size-4" />Generate main QR</Button>{data.branches.map((branch) => <Button key={branch.id} variant="secondary" onClick={() => void generate(branch.id)}>{branch.name_en}</Button>)}</div></Card><Card className="grid min-h-96 place-items-center p-6">{qr ? <div className="w-full max-w-sm text-center"><div className="rounded-3xl border border-[var(--line)] bg-white p-6"><img src={data.restaurant?.logo_url} alt="" className="mx-auto mb-3 size-12 rounded-xl" /><p className="font-black">{data.restaurant?.name_en}</p><p className="mb-4 mt-1 text-xs text-[var(--ink-soft)]">Scan to view our menu</p><img src={qr} alt="Restaurant menu QR" className="mx-auto aspect-square w-full max-w-64" /><p className="mt-3 text-xs font-black tracking-[.18em]">NEXMENU</p></div><p className="mt-4 truncate text-xs text-[var(--ink-soft)]">{target}</p><div className="mt-4 flex flex-wrap justify-center gap-2"><Button onClick={download}><Download className="size-4" />PNG</Button><Button variant="secondary" onClick={() => void downloadSvg()}><Download className="size-4" />SVG</Button><Button variant="secondary" onClick={() => void navigator.clipboard.writeText(target)}><Copy className="size-4" />Copy URL</Button><Button variant="secondary" onClick={() => print()}><Printer className="size-4" />Print</Button></div></div> : <div className="text-center text-[var(--ink-soft)]"><QrIcon className="mx-auto size-10 opacity-30" /><p className="mt-3 text-sm">Generate a QR to preview it here.</p></div>}</Card></div>;
 }
 function BrandingManager({ branding }: { branding?: Branding }) {
-  const { session } = useAuth(); const client = useQueryClient(); const [value, setValue] = useState(branding);
+  const { session } = useAuth();
+  const client = useQueryClient();
+  const [value, setValue] = useState(branding);
+
   if (!value) return <ErrorState body="Branding settings are missing." />;
-  const save = async () => { await restaurantService.saveBranding(session!, value); await client.invalidateQueries({ queryKey: ["restaurant", value.restaurant_id] }); };
-  return <Card className="p-6"><div className="grid gap-8 lg:grid-cols-2"><div><h2 className="text-xl font-black">Make it unmistakably yours</h2><p className="mt-2 text-sm text-[var(--ink-soft)]">Templates only change presentation. Your menu data stays intact.</p><div className="mt-6 grid gap-4"><label className="grid gap-2 text-sm font-bold">Template<select value={value.template} onChange={(e) => setValue({ ...value, template: e.target.value as Branding["template"] })} className="min-h-11 rounded-xl border border-[var(--line)] bg-white px-3">{["Modern", "Minimal", "Elegant", "Cafe", "Restaurant", "Fast Food"].map((item) => <option key={item}>{item}</option>)}</select></label><div className="grid grid-cols-2 gap-4">{[["Primary", "primary_color"], ["Background", "background_color"], ["Text", "text_color"], ["Secondary", "secondary_color"]].map(([label, field]) => <label key={field} className="grid gap-2 text-sm font-bold">{label}<input type="color" value={String(value[field as keyof Branding])} onChange={(e) => setValue({ ...value, [field]: e.target.value })} className="h-12 w-full rounded-xl border border-[var(--line)] bg-white p-1" /></label>)}</div><Button onClick={() => void save()}>Save branding</Button></div></div><div style={{ background: value.background_color, color: value.text_color }} className="min-h-96 rounded-3xl p-5"><div style={{ background: value.primary_color }} className="rounded-2xl p-6 text-white"><p className="text-xs font-bold opacity-70">{value.template.toUpperCase()}</p><p className="mt-12 text-3xl font-black">Cafe Moon</p><p className="mt-2 text-sm opacity-75">Your menu, beautifully yours.</p></div><div className="mt-4 grid grid-cols-2 gap-3">{[1, 2].map((item) => <div key={item} className="rounded-2xl bg-white/70 p-3"><div className="aspect-square rounded-xl bg-black/10" /><p className="mt-3 font-bold">Menu item</p></div>)}</div></div></div></Card>;
+
+  const textBgAudit = evaluateContrast(value.text_color, value.background_color, 4.5);
+  const buttonAudit = evaluateContrast("#ffffff", value.primary_color, 4.5);
+  const isBlocked = textBgAudit.isBlocked || buttonAudit.isBlocked;
+  const hasWarning = !isBlocked && (!textBgAudit.passesNormalAa || !buttonAudit.passesNormalAa);
+
+  const save = async () => {
+    if (isBlocked) return;
+    await restaurantService.saveBranding(session!, value);
+    await client.invalidateQueries({ queryKey: ["restaurant", value.restaurant_id] });
+  };
+
+  return (
+    <Card className="p-6">
+      <div className="grid gap-8 lg:grid-cols-2">
+        <div>
+          <h2 className="text-xl font-black">Make it unmistakably yours</h2>
+          <p className="mt-2 text-sm text-[var(--ink-soft)]">
+            Templates only change presentation. Your menu data stays intact.
+          </p>
+          <div className="mt-6 grid gap-4">
+            <label className="grid gap-2 text-sm font-bold">
+              Template
+              <select
+                value={value.template}
+                onChange={(e) =>
+                  setValue({ ...value, template: e.target.value as Branding["template"] })
+                }
+                className="min-h-11 rounded-xl border border-[var(--line)] bg-white px-3"
+              >
+                {["Modern", "Minimal", "Elegant", "Cafe", "Restaurant", "Fast Food"].map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+            </label>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                ["Primary", "primary_color"],
+                ["Background", "background_color"],
+                ["Text", "text_color"],
+                ["Secondary", "secondary_color"],
+              ].map(([label, field]) => (
+                <label key={field} className="grid gap-2 text-sm font-bold">
+                  {label}
+                  <input
+                    type="color"
+                    value={String(value[field as keyof Branding])}
+                    onChange={(e) => setValue({ ...value, [field]: e.target.value })}
+                    className="h-12 w-full rounded-xl border border-[var(--line)] bg-white p-1"
+                  />
+                </label>
+              ))}
+            </div>
+
+            {/* Accessibility & Contrast (WCAG 2.1) Audit */}
+            <div className="mt-2 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-[var(--ink)]">WCAG 2.1 Contrast Audit</span>
+                {isBlocked ? (
+                  <Badge className="bg-rose-100 text-rose-800">Critical Fail (&lt; 3:1)</Badge>
+                ) : hasWarning ? (
+                  <Badge className="bg-amber-100 text-amber-800">Warning (AA Large)</Badge>
+                ) : (
+                  <Badge className="bg-emerald-100 text-emerald-800">AA Passed</Badge>
+                )}
+              </div>
+
+              {/* Text / Background */}
+              <div className="mt-4 flex items-center justify-between border-t border-[var(--line)] pt-3">
+                <div>
+                  <p className="font-bold text-[var(--ink)]">Text on Background</p>
+                  <p className="text-xs text-[var(--ink-soft)]">
+                    Contrast: <span className="font-mono font-bold">{textBgAudit.formattedRatio}</span>
+                  </p>
+                </div>
+                <Badge
+                  className={
+                    textBgAudit.passesNormalAa
+                      ? "bg-emerald-100 text-emerald-800"
+                      : textBgAudit.passesLargeAa
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-rose-100 text-rose-800"
+                  }
+                >
+                  {textBgAudit.passesNormalAa
+                    ? "Pass (4.5:1+)"
+                    : textBgAudit.passesLargeAa
+                      ? "Large Only (3:1+)"
+                      : "Fail (< 3:1)"}
+                </Badge>
+              </div>
+              {textBgAudit.suggestedAlternative && (
+                <div className="mt-2 flex items-center justify-between rounded-xl bg-[var(--muted)] p-2.5 text-xs">
+                  <span>
+                    Suggested accessible text: <code className="font-mono font-bold">{textBgAudit.suggestedAlternative}</code>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setValue({ ...value, text_color: textBgAudit.suggestedAlternative! })
+                    }
+                    className="rounded-lg bg-[var(--accent)] px-2.5 py-1 font-bold text-white hover:brightness-95"
+                  >
+                    Apply
+                  </button>
+                </div>
+              )}
+
+              {/* Button (Primary) / White Text */}
+              <div className="mt-3 flex items-center justify-between border-t border-[var(--line)] pt-3">
+                <div>
+                  <p className="font-bold text-[var(--ink)]">Button (Primary) / Text</p>
+                  <p className="text-xs text-[var(--ink-soft)]">
+                    Contrast: <span className="font-mono font-bold">{buttonAudit.formattedRatio}</span>
+                  </p>
+                </div>
+                <Badge
+                  className={
+                    buttonAudit.passesNormalAa
+                      ? "bg-emerald-100 text-emerald-800"
+                      : buttonAudit.passesLargeAa
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-rose-100 text-rose-800"
+                  }
+                >
+                  {buttonAudit.passesNormalAa
+                    ? "Pass (4.5:1+)"
+                    : buttonAudit.passesLargeAa
+                      ? "Large Only (3:1+)"
+                      : "Fail (< 3:1)"}
+                </Badge>
+              </div>
+
+              {/* Warnings and Block Notices */}
+              {isBlocked && (
+                <p className="mt-3 text-xs font-bold text-rose-600">
+                  Saving is blocked: Contrast ratio is below 3.0:1. Text will be unreadable on mobile screens in sunlight. Please choose higher-contrast colors.
+                </p>
+              )}
+              {hasWarning && (
+                <p className="mt-3 text-xs font-medium text-amber-700">
+                  Warning: Colors meet 3.0:1 minimum for large text, but fall short of 4.5:1 for standard menu descriptions.
+                </p>
+              )}
+            </div>
+
+            <Button onClick={() => void save()} disabled={isBlocked}>
+              Save branding
+            </Button>
+          </div>
+        </div>
+        <div style={{ background: value.background_color, color: value.text_color }} className="min-h-96 rounded-3xl p-5">
+          <div style={{ background: value.primary_color }} className="rounded-2xl p-6 text-white">
+            <p className="text-xs font-bold opacity-70">{value.template.toUpperCase()}</p>
+            <p className="mt-12 text-3xl font-black">Cafe Moon</p>
+            <p className="mt-2 text-sm opacity-75">Your menu, beautifully yours.</p>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            {[1, 2].map((item) => (
+              <div key={item} className="rounded-2xl bg-white/70 p-3">
+                <div className="aspect-square rounded-xl bg-black/10" />
+                <p className="mt-3 font-bold">Menu item</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
 }
 function SettingsManager({ data }: { data: Details }) {
   const { session } = useAuth(); const client = useQueryClient(); const [restaurant, setRestaurant] = useState(data.restaurant);

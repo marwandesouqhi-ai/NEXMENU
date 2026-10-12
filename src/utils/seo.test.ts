@@ -5,7 +5,7 @@ import {
   buildRestaurantJsonLd,
   pruneUndefined,
 } from "./seo";
-import type { PublicMenu } from "@/types/domain";
+import type { PublicMenu, RestaurantSettings } from "@/types/domain";
 
 describe("SEO Utilities", () => {
   describe("pruneUndefined", () => {

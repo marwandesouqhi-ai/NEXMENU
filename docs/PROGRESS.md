@@ -153,7 +153,37 @@
 
 ## Phase 4: Branding Contrast
 
-**Status: NOT STARTED**
+**Status: COMPLETED**
+**Date: 2026-10-12**
+
+### Work Done
+1. **WCAG 2.1 Contrast Utility (`src/utils/contrast.ts`):**
+   - Pure mathematical implementation of W3C WCAG 2.1 specifications:
+     - `parseHexColor`: robust parser supporting 3-digit and 6-digit hex colors with or without hash, rejecting invalid input cleanly.
+     - `getRelativeLuminance`: computes precise luminance with sRGB gamma correction.
+     - `getContrastRatio`: computes exact contrast ratio (1:1 to 21:1).
+     - `evaluateContrast`: returns structured audit results with WCAG rating levels (`AAA`, `AA`, `AA-Large`, `FAIL`), compliance flags, formatted ratio, block status, and automated color suggestions.
+     - `suggestAccessibleColor`: dynamically computes high-contrast alternatives (`#111827` ink or `#ffffff` white) tailored to the background's luminance.
+     - `getSafeBrandingColors`: produces runtime fallback colors for text and buttons.
+2. **Branding Manager Settings UI (`src/pages/DashboardPage.tsx`):**
+   - Added live WCAG 2.1 Contrast Audit section to the branding manager.
+   - Live displays for:
+     - Text on Background contrast ratio and AA status badge.
+     - Button (Primary) on Text contrast ratio and AA status badge.
+     - Interactive "Apply" suggestion button to automatically adopt accessible colors.
+     - Hard save blocking (`disabled={isBlocked}`) when contrast is under 3.0:1 with critical illegibility warning.
+     - Advisory notice when contrast is between 3.0:1 and 4.5:1.
+3. **Public Menu Render-Time Safety Fallback (`src/pages/PublicMenuPage.tsx`):**
+   - Integrated `getSafeBrandingColors` into the public menu renderer to safeguard customer menus against illegible text or buttons regardless of database state.
+4. **Tests:**
+   - 19 unit tests in `src/utils/contrast.test.ts` verifying hex parsing edge cases, black/white extremes, luminance curve branches, compliance thresholds, color suggestion algorithms, and safety fallbacks.
+   - Total test suite grew from 36 to 55 tests, all passing.
+
+### Verified
+- [x] `pnpm typecheck` passed (0 errors)
+- [x] `pnpm lint` passed (0 errors)
+- [x] `pnpm test` passed (55 tests)
+- [x] `pnpm build` passed
 
 ---
 
