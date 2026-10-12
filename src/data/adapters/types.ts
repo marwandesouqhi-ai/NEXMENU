@@ -32,8 +32,10 @@ export interface DataAdapter {
   saveBranch(value: Branch): Promise<Branch>;
   listCategories(restaurantId: string): Promise<Category[]>;
   saveCategory(value: Category): Promise<Category>;
+  reorderCategories(restaurantId: string, orderedIds: string[]): Promise<Category[]>;
   listProducts(restaurantId: string): Promise<Product[]>;
   saveProduct(value: Product): Promise<Product>;
+  reorderProducts(restaurantId: string, categoryId: string, orderedIds: string[]): Promise<Product[]>;
   listOffers(restaurantId: string): Promise<Offer[]>;
   saveOffer(value: Offer): Promise<Offer>;
   listQrCodes(restaurantId: string): Promise<QrCode[]>;

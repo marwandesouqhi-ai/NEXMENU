@@ -147,8 +147,74 @@ export class LocalAdapter implements DataAdapter {
   async saveBranch(value: Branch) { return this.put("branches", value); }
   async listCategories(restaurantId: string) { return (await this.all<Category>("categories")).filter((item) => item.restaurant_id === restaurantId); }
   async saveCategory(value: Category) { return this.put("categories", value); }
+  async reorderCategories(restaurantId: string, orderedIds: string[]): Promise<Category[]> {
+    const db = await this.database();
+    const tx = db.transaction("categories", "readwrite");
+    const store = tx.objectStore("categories");
+    const all = (await store.getAll()) as Category[];
+    const restaurantCats = all.filter((c) => c.restaurant_id === restaurantId && !c.deleted_at);
+    const catMap = new Map(restaurantCats.map((c) => [c.id, c]));
+
+    for (const id of orderedIds) {
+      if (!catMap.has(id)) {
+        throw new ValidationError(`Category ${id} does not belong to this restaurant or does not exist.`);
+      }
+    }
+
+    const now = new Date().toISOString();
+    const updatedList: Category[] = [];
+    for (let i = 0; i < orderedIds.length; i++) {
+      const cat = catMap.get(orderedIds[i])!;
+      const updatedCat: Category = { ...cat, sort_order: i, updated_at: now };
+      await store.put(updatedCat);
+      updatedList.push(updatedCat);
+    }
+    const unmentioned = restaurantCats.filter((c) => !orderedIds.includes(c.id));
+    for (let i = 0; i < unmentioned.length; i++) {
+      const cat = unmentioned[i];
+      const updatedCat: Category = { ...cat, sort_order: orderedIds.length + i, updated_at: now };
+      await store.put(updatedCat);
+      updatedList.push(updatedCat);
+    }
+
+    await tx.done;
+    return updatedList.sort((a, b) => a.sort_order - b.sort_order);
+  }
   async listProducts(restaurantId: string) { return (await this.all<Product>("products")).filter((item) => item.restaurant_id === restaurantId); }
   async saveProduct(value: Product) { return this.put("products", value); }
+  async reorderProducts(restaurantId: string, categoryId: string, orderedIds: string[]): Promise<Product[]> {
+    const db = await this.database();
+    const tx = db.transaction("products", "readwrite");
+    const store = tx.objectStore("products");
+    const all = (await store.getAll()) as Product[];
+    const categoryProds = all.filter((p) => p.restaurant_id === restaurantId && p.category_id === categoryId && !p.deleted_at);
+    const prodMap = new Map(categoryProds.map((p) => [p.id, p]));
+
+    for (const id of orderedIds) {
+      if (!prodMap.has(id)) {
+        throw new ValidationError(`Product ${id} does not belong to category ${categoryId} or does not exist.`);
+      }
+    }
+
+    const now = new Date().toISOString();
+    const updatedList: Product[] = [];
+    for (let i = 0; i < orderedIds.length; i++) {
+      const prod = prodMap.get(orderedIds[i])!;
+      const updatedProd: Product = { ...prod, sort_order: i, updated_at: now };
+      await store.put(updatedProd);
+      updatedList.push(updatedProd);
+    }
+    const unmentioned = categoryProds.filter((p) => !orderedIds.includes(p.id));
+    for (let i = 0; i < unmentioned.length; i++) {
+      const prod = unmentioned[i];
+      const updatedProd: Product = { ...prod, sort_order: orderedIds.length + i, updated_at: now };
+      await store.put(updatedProd);
+      updatedList.push(updatedProd);
+    }
+
+    await tx.done;
+    return updatedList.sort((a, b) => a.sort_order - b.sort_order);
+  }
   async listOffers(restaurantId: string) { return (await this.all<Offer>("offers")).filter((item) => item.restaurant_id === restaurantId); }
   async saveOffer(value: Offer) { return this.put("offers", value); }
   async listQrCodes(restaurantId: string) { return (await this.all<QrCode>("qr_codes")).filter((item) => item.restaurant_id === restaurantId); }

@@ -102,6 +102,13 @@ export const restaurantService = {
     await audit(session, value.restaurant_id, "category.deleted", "category", value.id);
     return saved;
   },
+  async reorderCategories(session: Session, restaurantId: string, orderedIds: string[]) {
+    await authorize(dataAdapter, session, "menu:update", restaurantId);
+    if (!Array.isArray(orderedIds)) throw new ValidationError("orderedIds must be an array of IDs.");
+    const saved = await dataAdapter.reorderCategories(restaurantId, orderedIds);
+    await audit(session, restaurantId, "categories.reordered", "category", undefined, { count: orderedIds.length });
+    return saved;
+  },
   async saveProduct(session: Session, value: Product, isNew = false) {
     await authorize(dataAdapter, session, isNew ? "menu:create" : "menu:update", value.restaurant_id);
     if (value.price < 0 || (value.compare_at_price !== undefined && value.compare_at_price <= value.price)) throw new ValidationError("Compare-at price must be higher than the current price.");
@@ -124,6 +131,13 @@ export const restaurantService = {
     await authorize(dataAdapter, session, "menu:delete", value.restaurant_id);
     const saved = await dataAdapter.saveProduct({ ...updated(value), deleted_at: new Date().toISOString() });
     await audit(session, value.restaurant_id, "product.deleted", "product", value.id);
+    return saved;
+  },
+  async reorderProducts(session: Session, restaurantId: string, categoryId: string, orderedIds: string[]) {
+    await authorize(dataAdapter, session, "menu:update", restaurantId);
+    if (!Array.isArray(orderedIds)) throw new ValidationError("orderedIds must be an array of IDs.");
+    const saved = await dataAdapter.reorderProducts(restaurantId, categoryId, orderedIds);
+    await audit(session, restaurantId, "products.reordered", "product", undefined, { category_id: categoryId, count: orderedIds.length });
     return saved;
   },
   async duplicateProduct(session: Session, value: Product) {

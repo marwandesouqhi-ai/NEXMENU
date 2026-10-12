@@ -91,7 +91,33 @@
 
 ## Phase 2: Reordering
 
-**Status: NOT STARTED**
+**Status: COMPLETED**
+**Date: 2026-10-12**
+
+### Work Done
+1. **Atomic Service Reorder Operations (`restaurants.ts`, `dataAdapter`):**
+   - Added `reorderCategories(session, restaurantId, orderedIds)` and `reorderProducts(session, restaurantId, categoryId, orderedIds)`.
+   - Guaranteed atomic persistence: all updates occur within a single database transaction in the data adapter, eliminating partial failures.
+   - Normalizes `sort_order` values to contiguous integers (`0, 1, 2, ...`).
+   - Service-layer authorization enforces `menu:update` and tenant ownership before any mutation. Rejects cross-tenant reorder attempts and foreign IDs.
+   - Audit logs written for reordering events (`categories.reordered`, `products.reordered`).
+2. **Accessible UI Controls (`ReorderableControls.tsx`, `DashboardPage.tsx`):**
+   - Built `ReorderableControls` component featuring:
+     - Drag handle with grab cursor and visual feedback for pointer/touch drag operations.
+     - Keyboard-accessible "Move Up" and "Move Down" buttons with proper `aria-label`s.
+     - Disabled states for boundary items (first and last).
+   - Integrated into both Category and Product managers in `DashboardPage.tsx`. Products reorder cleanly within their active category.
+3. **Public Menu Verification:**
+   - Verified `dataAdapter.getPublicMenu` already filters and sorts visible categories and products by `a.sort_order - b.sort_order`, guaranteeing that public menu viewers see the exact updated sequence.
+4. **Tests:**
+   - Added 6 tests in `src/services/reorder.test.ts` verifying category order persistence, contiguous normalization, cross-tenant denial, and invalid ID rejection.
+   - Total test suite grew from 25 to 31 tests, all passing.
+
+### Verified
+- [x] `pnpm typecheck` passed (0 errors)
+- [x] `pnpm lint` passed (0 errors)
+- [x] `pnpm test` passed (31 tests)
+- [x] `pnpm build` passed
 
 ---
 
