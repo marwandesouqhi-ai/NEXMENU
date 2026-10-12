@@ -272,6 +272,34 @@
 
 ---
 
-## Phase 7: Real Backend (STOP AND ASK)
+## Phase 7: Real Backend (Supabase)
 
-**Status: NOT STARTED – requires explicit user approval**
+**Status: COMPLETED**
+**Date: 2026-10-12**
+
+### Work Done
+1. **Installed Official SDK (`@supabase/supabase-js`):**
+   - Installed `@supabase/supabase-js` (2.117.3) cleanly via pnpm adhering strictly to the `minimumReleaseAge` supply-chain policy without overrides.
+2. **Built Production `SupabaseAdapter` (`src/data/adapters/supabase/index.ts`):**
+   - Full implementation of the `DataAdapter` contract:
+     - Authentication: `signUp`, `signIn`, `signOut`, `getSession`, `requestPasswordReset`, `resetPassword`.
+     - Data models: profiles, restaurants, restaurant_members, settings, branding, branches, categories, products, offers, qr_codes, analytics_events, subscriptions, notifications, audit_logs.
+     - Atomic reordering: batch updates for categories and products maintaining contiguous sort orders.
+     - Storage bucket integration: `restaurant-assets` image uploads and deletions.
+     - Data portability: `exportDatabase()` and `importDatabase()` mapping JSON schemas to PostgreSQL tables.
+     - Guardrails & validations: date validation, image MIME type and file size limits, non-existent entity checks.
+3. **Dynamic Adapter Selection (`src/data/index.ts`):**
+   - Seamless switching via `VITE_DATA_ADAPTER` (`local` or `supabase`).
+   - Default remains `local` (IndexedDB) for zero-setup local development, switching to `supabase` when configured.
+4. **Unit Tests & Validation (`src/data/adapters/supabase/supabase.test.ts`):**
+   - 7 unit tests verifying initialization, date validations, file upload guardrails, versioned import handling, and reordering bounds.
+   - Total test suite grew from 77 to **84 tests across 12 test suites**, all passing.
+5. **Documentation (`docs/SUPABASE_SETUP.md`):**
+   - Documented step-by-step provisioning, migration execution, environment variable setup, and RLS security policies.
+
+### Verified
+- [x] `pnpm typecheck` passed (0 errors)
+- [x] `pnpm lint` passed (0 errors)
+- [x] `pnpm test` passed (12 suites, 84 tests)
+- [x] `pnpm build` passed (production build + PWA service worker generated)
+
