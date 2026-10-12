@@ -38,9 +38,27 @@ const cleanProfile = ({ password_hash: _hash, password_salt: _salt, ...profile }
 export class LocalAdapter implements DataAdapter {
   private db?: IDBPDatabase<LocalSchema>;
   private async database() {
-    if (!this.db) this.db = await openDB<LocalSchema>("nexmenu-local", 1, {
-      upgrade(db) {
-        for (const store of [...stores, "sessions", "meta", "files"] as const) db.createObjectStore(store, { keyPath: "id" });
+    if (!this.db) this.db = await openDB<LocalSchema>("nexmenu-local", 2, {
+      async upgrade(db, oldVersion, _newVersion, transaction) {
+        if (oldVersion < 1) {
+          for (const store of [...stores, "sessions", "meta", "files"] as const) db.createObjectStore(store, { keyPath: "id" });
+        }
+        if (oldVersion >= 1 && oldVersion < 2) {
+          const subStore = transaction.objectStore("subscriptions");
+          const existingSubs = (await subStore.getAll()) as Subscription[];
+          for (const sub of existingSubs) {
+            const starts = sub.starts_at || sub.start_date || new Date().toISOString();
+            const expires = sub.expires_at || sub.end_date || new Date(Date.now() + 365 * 86_400_000).toISOString();
+            await subStore.put({
+              ...sub,
+              starts_at: starts,
+              expires_at: expires,
+              start_date: starts,
+              end_date: expires,
+              notes: sub.notes ?? "",
+            });
+          }
+        }
       },
     });
     return this.db;
@@ -137,8 +155,24 @@ export class LocalAdapter implements DataAdapter {
   async saveQrCode(value: QrCode) { return this.put("qr_codes", value); }
   async listAnalytics(restaurantId?: string) { const all = await this.all<AnalyticsEvent>("analytics_events"); return restaurantId ? all.filter((item) => item.restaurant_id === restaurantId) : all; }
   async saveAnalytics(value: AnalyticsEvent) { return this.put("analytics_events", value); }
+  async listSubscriptions() { return this.all<Subscription>("subscriptions"); }
   async getSubscription(restaurantId: string) { return (await this.all<Subscription>("subscriptions")).find((item) => item.restaurant_id === restaurantId); }
-  async saveSubscription(value: Subscription) { return this.put("subscriptions", value); }
+  async saveSubscription(value: Subscription) {
+    const starts = value.start_date || value.starts_at;
+    const expires = value.end_date || value.expires_at;
+    if (starts && expires && new Date(expires).getTime() < new Date(starts).getTime()) {
+      throw new ValidationError("Subscription end date cannot be earlier than start date.");
+    }
+    const normalized: Subscription = {
+      ...value,
+      starts_at: starts,
+      expires_at: expires,
+      start_date: starts,
+      end_date: expires,
+      notes: value.notes ?? "",
+    };
+    return this.put("subscriptions", normalized);
+  }
   async listNotifications(restaurantId: string) { return (await this.all<Notification>("notifications")).filter((item) => item.restaurant_id === restaurantId); }
   async saveNotification(value: Notification) { return this.put("notifications", value); }
   async listAuditLogs(restaurantId?: string) { const all = await this.all<AuditLog>("audit_logs"); return restaurantId ? all.filter((item) => item.restaurant_id === restaurantId) : all; }

@@ -52,7 +52,40 @@
 
 ## Phase 1: Admin Panel Fixes
 
-**Status: NOT STARTED**
+**Status: COMPLETED**
+**Date: 2026-10-12**
+
+### Work Done
+1. **Plan column regression fix (`AdminPage.tsx`):**
+   - Connected `AdminPage` to real restaurant subscriptions via `adminService.dashboard()`.
+   - Replaced hardcoded `defaultValue="PRO"` with controlled select bound to actual plan (`FREE`, `BASIC`, `PRO`, `PREMIUM`).
+   - Added regression test `src/pages/AdminPage.test.tsx` asserting all plan types render accurately without defaulting to PRO.
+2. **Subscription model extension (`domain.ts`, `dataAdapter`, `supabase/`):**
+   - Extended `Subscription` interface with `start_date`, `end_date`, `notes`, and helper `getDerivedSubscriptionStatus` (`active`, `expiring_soon`, `expired`).
+   - Upgraded IndexedDB adapter to database version 2 with migration normalizer for existing subscription records.
+   - Added `saveSubscription` date validation (`expires_at >= starts_at`).
+   - Added new Supabase migration `supabase/migrations/006_subscription_fields.sql` enforcing `check (expires_at >= starts_at)`.
+3. **Subscription Editor UI (`AdminPage.tsx`):**
+   - Added modal to view and update subscription plan, start date, expiration date, and administrative notes.
+   - Client-side validation prevents saving when expiration is before start date.
+4. **User Management (`teamService`, `AdminPage.tsx`):**
+   - Full team management for tenant restaurants: list members, update role (`RESTAURANT_OWNER`, `RESTAURANT_MANAGER`, `STAFF`), activate/deactivate, remove member, and invite new member.
+   - Enforced last-owner protection in service layer: nobody can demote, deactivate, or delete the last active owner of a tenant.
+   - Role permissions enforced via `team:write` (super-admin or tenant owner).
+5. **Audit Log Filtering and Pagination (`AdminPage.tsx`, `restaurants.ts`):**
+   - Added `adminService.filterAuditLogs()` supporting date range (`dateFrom`, `dateTo`), action type substring, restaurant filter, and actor search.
+   - Added pagination controls with total count and page indicators.
+   - Wired audit logs to all new admin mutations (`member.role_changed`, `member.activated`, `member.deactivated`, `member.removed`, `member.invited`, `subscription.updated`, `plan.changed`).
+6. **Tests:**
+   - 16 new unit/authorization tests in `src/services/admin.test.ts` covering derived status, date validation, admin/owner permissions, cross-tenant rejection, last-owner demotion/deactivation/removal protection, invite deduplication, and audit log filtering.
+   - 1 regression test in `src/pages/AdminPage.test.tsx`.
+   - Total test suite grew from 8 to 25 tests, all passing.
+
+### Verified
+- [x] `pnpm typecheck` passed (0 errors)
+- [x] `pnpm lint` passed (0 errors)
+- [x] `pnpm test` passed (25 tests)
+- [x] `pnpm build` passed (production bundle + PWA service worker generated)
 
 ---
 

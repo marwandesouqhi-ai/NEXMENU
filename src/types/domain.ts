@@ -51,7 +51,7 @@ export interface Membership extends Entity {
   profile_id?: string;
   email: string;
   role: Exclude<Role, "SUPER_ADMIN">;
-  status: "ACTIVE" | "PENDING";
+  status: "ACTIVE" | "PENDING" | "SUSPENDED";
 }
 export interface Shift { open: string; close: string }
 export interface DayHours { closed: boolean; shifts: Shift[] }
@@ -155,14 +155,36 @@ export interface AnalyticsEvent extends Entity {
   source: "qr" | "direct";
   visitor_day_id?: string;
 }
+export type DerivedSubscriptionStatus = "active" | "expiring_soon" | "expired";
+
 export interface Subscription extends Entity {
   restaurant_id: string;
   plan: PlanCode;
   starts_at: string;
   expires_at: string;
+  start_date?: string;
+  end_date?: string;
   status: "ACTIVE" | "SUSPENDED" | "EXPIRED";
   notes: string;
 }
+
+export function getDerivedSubscriptionStatus(
+  sub?: Pick<Subscription, "starts_at" | "expires_at" | "status" | "start_date" | "end_date"> | null,
+  referenceDate = new Date(),
+): DerivedSubscriptionStatus {
+  if (!sub) return "expired";
+  if (sub.status === "EXPIRED" || sub.status === "SUSPENDED") return "expired";
+  const expiryRaw = sub.end_date || sub.expires_at;
+  if (!expiryRaw) return "expired";
+  const expiryTime = new Date(expiryRaw).getTime();
+  const nowTime = referenceDate.getTime();
+  if (isNaN(expiryTime) || expiryTime <= nowTime) return "expired";
+  // Expiring soon if within 14 days
+  const fourteenDaysMs = 14 * 86_400_000;
+  if (expiryTime - nowTime <= fourteenDaysMs) return "expiring_soon";
+  return "active";
+}
+
 export interface Notification extends Entity {
   restaurant_id: string;
   profile_id?: string;

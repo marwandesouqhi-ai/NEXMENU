@@ -40,6 +40,7 @@ export interface DataAdapter {
   saveQrCode(value: QrCode): Promise<QrCode>;
   listAnalytics(restaurantId?: string): Promise<AnalyticsEvent[]>;
   saveAnalytics(value: AnalyticsEvent): Promise<AnalyticsEvent>;
+  listSubscriptions(): Promise<Subscription[]>;
   getSubscription(restaurantId: string): Promise<Subscription | undefined>;
   saveSubscription(value: Subscription): Promise<Subscription>;
   listNotifications(restaurantId: string): Promise<Notification[]>;
