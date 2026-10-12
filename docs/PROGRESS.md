@@ -226,9 +226,49 @@
 
 ---
 
-## Phase 6: Testing
+## Phase 6: Testing & Lighthouse CI
 
-**Status: NOT STARTED**
+**Status: COMPLETED**
+**Date: 2026-10-12**
+
+### Work Done
+1. **Domain CRUD & Validation Test Suite (`src/services/crud.test.ts`):**
+   - Restaurant lifecycle: creation, owner auto-assignment, slug validation rules (URL-safe, lowercase, reserved word protection like `/admin`), slug uniqueness enforcement, settings and contact updates.
+   - Category CRUD: creation, update, and soft deletion (`deleted_at`).
+   - Product CRUD: creation, update, duplication, soft deletion, negative price rejection, and compare-at price validation (`compare_at_price > price`).
+2. **SaaS Plan Limits Enforcement Suite (`src/services/plan-limits.test.ts`):**
+   - FREE plan product limit (30 products max, throwing `PlanLimitError` on 31st).
+   - FREE plan branch limit (1 branch max).
+   - Expired PRO subscription graceful fallback to FREE limits and analytics gating without data loss.
+   - Active PRO plan multi-branch capabilities (up to 5 branches) and analytics unlock.
+3. **Opening Hours Edge Cases Suite (`src/utils/opening-hours.test.ts`):**
+   - Standard daytime single shifts.
+   - Split shifts (e.g. lunch 11:30–15:00 and dinner 18:00–23:00).
+   - Midnight-crossing overnight shifts (e.g. 18:00–02:00 next day).
+   - Cross-day overnight boundary assertions (e.g. Sunday night shift extending into Monday 01:30 AM).
+   - Non-UTC timezone offset calculations (e.g. `Africa/Cairo` UTC+2).
+4. **In-Memory Test Adapter Harness (`src/test/mock-adapter.ts`):**
+   - Pure, deterministic, zero-dependency in-memory mock harness for Node/Vitest environments.
+   - Provides full store mocking with transactional atomicity for reliable unit testing without relying on browser IndexedDB APIs.
+5. **Playwright End-to-End Suite (`playwright.config.ts`, `tests/`):**
+   - Configured dual-target execution: Desktop Chromium and Mobile Chrome (375px viewport simulating iPhone SE / Android devices).
+   - Automated dev server lifecycle orchestration (`pnpm dev` on port 5173).
+   - `tests/public-menu.spec.ts`: Verifies public menu branding, category filtering, search, and responsive layout.
+   - `tests/admin.spec.ts`: Verifies super-admin dashboard, subscription editor, and tenant team management.
+   - `tests/menu-reorder.spec.ts`: Verifies category and product reordering flows with accessible controls.
+   - `tests/branding-contrast.spec.ts`: Verifies live WCAG contrast checking, warning badges, and save blocking.
+   - `tests/pwa.spec.ts`: Verifies web app manifest validity, theme color, display standalone, and service worker registration.
+6. **Lighthouse CI Configuration & Guide (`lighthouserc.json`, `docs/LIGHTHOUSE_CI.md`):**
+   - Configured target thresholds: Accessibility >= 95, SEO >= 95, Best Practices >= 90, Performance >= 85, PWA criteria.
+   - Provided comprehensive CI/CD integration guide and local execution instructions.
+7. **Test Suite Growth:**
+   - Vitest suite grew from 61 to **77 tests across 11 test suites**, all passing cleanly.
+
+### Verified
+- [x] `pnpm typecheck` passed (0 errors)
+- [x] `pnpm lint` passed (0 errors)
+- [x] `pnpm test` passed (11 suites, 77 tests)
+- [x] `pnpm build` passed (production build + PWA service worker generated)
 
 ---
 
