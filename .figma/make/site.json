@@ -1,0 +1,15 @@
+{
+  "title": "NEXMENU — Your Restaurant. Your Menu. One QR.",
+  "description": "NEXMENU offers restaurants a professional digital menu platform, allowing easy management of menu items and customer access via QR codes without online ordering.",
+  "language": "en",
+  "icons": {
+    "icon": "/favicon.svg"
+  },
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
