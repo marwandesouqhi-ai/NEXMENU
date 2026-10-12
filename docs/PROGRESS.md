@@ -189,7 +189,40 @@
 
 ## Phase 5: DashboardPage Refactor
 
-**Status: NOT STARTED**
+**Status: COMPLETED**
+**Date: 2026-10-12**
+
+### Work Done
+1. **Feature Module Decomposition (`src/features/dashboard/`):**
+   - Extracted all domain logic into clean, cohesive feature modules:
+     - `overview/OverviewSection.tsx`: Restaurant metrics, readiness checklist, and live menu card.
+     - `menu/MenuSection.tsx`: Category & product management with atomic drag-and-drop & keyboard reordering.
+     - `qr/QrSection.tsx`: High-resolution QR code generator (PNG/SVG export, branch targeting, clipboard copy).
+     - `analytics/AnalyticsSection.tsx`: Trend chart powered by Recharts (isolated to its own deferred chunk).
+     - `branding/BrandingSection.tsx`: Live theme styling with real-time WCAG 2.1 contrast audits and save-blocking.
+     - `settings/SettingsSection.tsx`: Profile configuration, publication status, and full local JSON backup export.
+     - `subscription/SubscriptionSection.tsx`: Plan features matrix and manual renewal notices.
+     - `offers/OffersSection.tsx`: Active promotions list and validity dates.
+     - `branches/BranchesSection.tsx`: Multi-location branch directory.
+     - `team/TeamSection.tsx`: Staff directory and membership invitation panel.
+     - `common/Stat.tsx`: Shared reusable stat card.
+     - `common/DashboardErrorBoundary.tsx`: Resilient section error boundary with localized retry.
+2. **Thin Router Shell (`src/pages/DashboardPage.tsx`):**
+   - Reduced `DashboardPage.tsx` from 622 lines to **92 lines** (well below the <150 line mandate).
+   - Wrapped route views in `<Suspense fallback={<LoadingState />}>` and `<DashboardErrorBoundary>` using `React.lazy`.
+3. **Bundle Size Reduction:**
+   - Baseline `DashboardPage`: 404.02 kB (118.14 kB gzip)
+   - New `DashboardPage` router shell: **4.30 kB (1.72 kB gzip)** — **98.9% size reduction**!
+   - Heavy dependencies (e.g. Recharts in `AnalyticsSection`: 354.22 kB) are completely deferred and only fetched when navigated to.
+4. **Tests:**
+   - 6 new integration tests in `src/pages/DashboardPage.test.tsx` verifying async rendering of Overview, Menu, Branding, Settings, Subscription, and Team modules.
+   - Total test suite grew from 55 to 61 tests, all passing across 8 test suites.
+
+### Verified
+- [x] `pnpm typecheck` passed (0 errors)
+- [x] `pnpm lint` passed (0 errors)
+- [x] `pnpm test` passed (61 tests)
+- [x] `pnpm build` passed (production build + PWA service worker generated)
 
 ---
 
