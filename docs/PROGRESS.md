@@ -303,3 +303,23 @@
 - [x] `pnpm test` passed (12 suites, 84 tests)
 - [x] `pnpm build` passed (production build + PWA service worker generated)
 
+---
+
+## Phase A: Security & Honesty Audit Findings
+
+**Status: COMPLETED**
+**Date: 2026-10-12**
+
+### Audit Findings & Proof:
+1. **Privilege Escalation (CONFIRMED):** In `002_rls.sql:33`, `profiles_self_update` checks `(id = auth.uid())` without column restrictions, allowing any authenticated user to set `platform_role = 'SUPER_ADMIN'`. Proven in `supabase/tests/audit_vulnerabilities.sql`.
+2. **Sign-Up Failure (CONFIRMED):** `002_rls.sql` lacks an `INSERT` policy on `public.profiles` and lacks an `auth.users` trigger. `SupabaseAdapter.signUp` attempts to insert `password_hash` and `password_salt`, which do not exist in the `public.profiles` table schema. Proven in `supabase/tests/audit_vulnerabilities.sql`.
+3. **Last-Owner Protection Bypass (CONFIRMED):** `members_owner_write` in `002_rls.sql:39` allows any restaurant owner to delete all owners. Protection existed exclusively in the client TypeScript service layer.
+4. **Tenant Isolation Holes (CONFIRMED):**
+   - *Critical:* Restaurant creation deadlock (`restaurants_owner_write` requires membership on creation).
+   - *High:* `SupabaseAdapter.getPublicMenu` queries RLS-protected tables instead of using the `get_public_menu` RPC.
+   - *High:* Storage bucket upload path mismatch (`uploads/` instead of tenant UUID folder).
+   - *Medium:* Unvalidated `audit_logs` inserts allowing arbitrary actor roles.
+5. **Local Crypto Incompatibility (CONFIRMED & PROVEN):** The custom LAN fallback hash in `crypto.ts` is incompatible with standard Web Cryptography PBKDF2 (120,000 iterations). Proved in `src/test/audit/crypto-incompatibility.test.ts`.
+6. **E2E & Lighthouse Status (CONFIRMED):** Playwright browser binaries were not installed and E2E tests were never run in CI.
+7. **SEO Domain & Sitemaps (CONFIRMED):** `robots.txt` points to fake domain `https://nexmenu.local/sitemap.xml`, and no dynamic sitemap or edge pre-rendering functions exist.
+
