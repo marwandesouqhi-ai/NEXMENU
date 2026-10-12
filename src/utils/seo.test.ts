@@ -3,11 +3,40 @@ import {
   buildMetaTags,
   buildOpeningHoursSpecification,
   buildRestaurantJsonLd,
+  escapeHtml,
+  escapeXml,
+  getSiteUrl,
   pruneUndefined,
 } from "./seo";
 import type { PublicMenu, RestaurantSettings } from "@/types/domain";
 
 describe("SEO Utilities", () => {
+  describe("getSiteUrl", () => {
+    it("returns configured domain or falls back to valid HTTPS URL without trailing slashes", () => {
+      const url = getSiteUrl();
+      expect(url).toMatch(/^https?:\/\//);
+      expect(url.endsWith("/")).toBe(false);
+    });
+  });
+
+  describe("escapeHtml & escapeXml Sanitization", () => {
+    it("escapes malicious characters to prevent XSS and template injection", () => {
+      const malicious = '<script>alert("xss")</script>&foo=\'bar\'';
+      const safe = escapeHtml(malicious);
+      expect(safe).not.toContain("<script>");
+      expect(safe).not.toContain('"');
+      expect(safe).toContain("&lt;script&gt;");
+      expect(safe).toContain("&quot;xss&quot;");
+      expect(safe).toContain("&#039;bar&#039;");
+    });
+
+    it("escapes XML special characters for sitemaps and feeds", () => {
+      const xmlPayload = '<url attr="val">&\'test\'</url>';
+      const safe = escapeXml(xmlPayload);
+      expect(safe).not.toContain("<url");
+      expect(safe).toContain("&lt;url attr=&quot;val&quot;&gt;&amp;&apos;test&apos;&lt;/url&gt;");
+    });
+  });
   describe("pruneUndefined", () => {
     it("removes undefined, null, and empty string properties recursively", () => {
       const input = {

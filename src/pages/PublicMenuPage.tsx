@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import type { Product } from "@/types/domain";
 import { useSeo } from "@/utils/useSeo";
-import { buildRestaurantJsonLd } from "@/utils/seo";
+import { buildRestaurantJsonLd, getSiteUrl } from "@/utils/seo";
 import { getSafeBrandingColors } from "@/utils/contrast";
 
 type BrandStyle = CSSProperties & Record<`--menu-${string}`, string>;
@@ -41,7 +41,7 @@ export default function PublicMenuPage() {
     addEventListener("online", update); addEventListener("offline", update);
     return () => { removeEventListener("online", update); removeEventListener("offline", update); };
   }, []);
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const origin = (typeof window !== "undefined" && window.location?.origin) || getSiteUrl();
   const canonicalUrl = `${origin}/r/${restaurantSlug}${branch ? `?branch=${branch}` : ""}`;
   const title = menu
     ? `${locale === "ar" ? menu.restaurant.name_ar : menu.restaurant.name_en} | Digital Menu`

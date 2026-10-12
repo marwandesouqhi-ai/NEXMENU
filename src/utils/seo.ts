@@ -17,6 +17,46 @@ export interface MetaTagEntry {
 }
 
 /**
+ * Resolves the canonical public site origin from VITE_SITE_URL or defaults to production domain.
+ */
+export function getSiteUrl(): string {
+  const envUrl =
+    typeof import.meta !== "undefined" && import.meta.env?.VITE_SITE_URL
+      ? String(import.meta.env.VITE_SITE_URL)
+      : undefined;
+  const processUrl =
+    typeof process !== "undefined" && process.env?.VITE_SITE_URL
+      ? String(process.env.VITE_SITE_URL)
+      : undefined;
+  const raw = envUrl || processUrl || "https://nexmenu.app";
+  return raw.replace(/\/+$/, "");
+}
+
+/**
+ * Escapes special characters for safe inclusion in HTML templates and meta tags.
+ */
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/**
+ * Escapes special characters for safe inclusion in XML documents like sitemaps.
+ */
+export function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+/**
  * Strips undefined, null, or empty string values recursively so JSON-LD output
  * never contains invalid schema properties.
  */

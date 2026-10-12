@@ -387,3 +387,36 @@
 - [x] `pnpm test` passed (89 tests passed, 1 skipped)
 - [x] `pnpm build` passed (production build + PWA service worker generated)
 
+---
+
+## Phase D: SEO & Dynamic Sitemaps
+
+**Status: COMPLETED**
+**Date: 2026-10-12**
+
+### Work Done
+1. **Dynamic Origin & Domain Standard (`src/utils/seo.ts`):**
+   - Added `getSiteUrl()` resolving from `VITE_SITE_URL` env variable or defaulting to `https://nexmenu.app`.
+   - Updated `public/robots.txt` replacing the local placeholder with `https://nexmenu.app/sitemap.xml`.
+   - Updated `src/pages/PublicMenuPage.tsx` to utilize `getSiteUrl()`.
+2. **Sitemap Generator Utility (`src/utils/sitemap.ts`):**
+   - Implemented `generateSitemapXml` building sitemaps.org schema-compliant XML.
+   - Includes static landing and auth roots with standard change frequencies and priorities.
+   - Dynamically indexes published restaurants (`/r/:slug`) with ISO-8601 `<lastmod>` dates.
+   - XML escaping on all dynamic slugs and URLs to prevent XML injection.
+3. **Edge / Serverless Handlers (`api/sitemap.ts`, `api/menu-meta.ts`, `vercel.json`):**
+   - `api/sitemap.ts`: Edge function querying Supabase REST for active, published restaurant slugs and returning XML responses with edge cache headers.
+   - `api/menu-meta.ts`: Edge function detecting search engine crawlers and bots (`googlebot`, `twitterbot`, `facebookexternalhit`, etc.) to inject OpenGraph tags, Twitter card tags, and Schema.org JSON-LD before returning HTML.
+   - `vercel.json`: Rewrote `/sitemap.xml` to `/api/sitemap` and `/r/:slug` to `/api/menu-meta?slug=:slug`.
+4. **Security & Sanitization:**
+   - Implemented `escapeHtml` and `escapeXml` in `src/utils/seo.ts` to prevent XSS and template injection.
+   - Added unit test suites verifying sanitization against malicious tag injections.
+5. **Automated Verification:**
+   - Vitest suite grew to **95 tests passed across 15 test suites** (1 skipped cleanly).
+
+### Verified
+- [x] `pnpm typecheck` passed (0 errors)
+- [x] `pnpm lint` passed (0 errors)
+- [x] `pnpm test` passed (95 tests passed, 1 skipped)
+- [x] `pnpm build` passed (production build + PWA service worker generated)
+

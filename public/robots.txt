@@ -9,4 +9,4 @@ Disallow: /signup
 Disallow: /reset-password
 Disallow: /onboarding
 
-Sitemap: https://nexmenu.local/sitemap.xml
+Sitemap: https://nexmenu.app/sitemap.xml
