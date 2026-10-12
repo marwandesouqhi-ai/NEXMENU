@@ -40,16 +40,27 @@ export class SupabaseAdapter implements DataAdapter {
     const url = options?.url ?? import.meta.env.VITE_SUPABASE_URL;
     const anonKey = options?.anonKey ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+    const isTest = import.meta.env.MODE === "test";
+    const clientOptions = {
+      auth: {
+        persistSession: !isTest,
+        autoRefreshToken: !isTest,
+        detectSessionInUrl: !isTest,
+        ...(isTest ? { storageKey: `sb-test-${Math.random().toString(36).slice(2)}` } : {}),
+      },
+    };
+
     if (!url || !anonKey) {
       // In dev/test when variables are missing, provide a dummy client fallback or descriptive warning
       this.client = createClient(
         url || "https://placeholder-nexmenu.supabase.co",
         anonKey || "placeholder-anon-key",
+        clientOptions,
       );
       return;
     }
 
-    this.client = createClient(url, anonKey);
+    this.client = createClient(url, anonKey, clientOptions);
   }
 
   async initialize(): Promise<void> {
@@ -79,14 +90,6 @@ export class SupabaseAdapter implements DataAdapter {
       created_at: now,
       updated_at: now,
     };
-
-    const { error: profileError } = await this.client
-      .from("profiles")
-      .upsert(profile);
-
-    if (profileError) {
-      throw new ValidationError(profileError.message);
-    }
 
     const session: Session = {
       id: data.session?.access_token ?? `sess-${data.user.id}`,
@@ -308,6 +311,14 @@ export class SupabaseAdapter implements DataAdapter {
   }
 
   async reorderCategories(restaurantId: string, orderedIds: string[]): Promise<Category[]> {
+    const { data: rpcData, error: rpcErr } = await this.client.rpc("reorder_categories", {
+      p_restaurant_id: restaurantId,
+      p_category_ids: orderedIds,
+    });
+    if (!rpcErr && Array.isArray(rpcData)) {
+      return rpcData as Category[];
+    }
+
     const all = await this.listCategories(restaurantId);
     const catMap = new Map(all.map((c) => [c.id, c]));
 
@@ -365,6 +376,15 @@ export class SupabaseAdapter implements DataAdapter {
     categoryId: string,
     orderedIds: string[],
   ): Promise<Product[]> {
+    const { data: rpcData, error: rpcErr } = await this.client.rpc("reorder_products", {
+      p_restaurant_id: restaurantId,
+      p_category_id: categoryId,
+      p_product_ids: orderedIds,
+    });
+    if (!rpcErr && Array.isArray(rpcData)) {
+      return rpcData as Product[];
+    }
+
     const all = await this.listProducts(restaurantId);
     const categoryProds = all.filter((p) => p.category_id === categoryId);
     const prodMap = new Map(categoryProds.map((p) => [p.id, p]));
@@ -537,6 +557,24 @@ export class SupabaseAdapter implements DataAdapter {
   }
 
   async getPublicMenu(slug: string, branchSlug?: string): Promise<PublicMenu | undefined> {
+    const { data: rpcData, error: rpcErr } = await this.client.rpc("get_public_menu", {
+      menu_slug: slug,
+      branch_slug: branchSlug ?? null,
+    });
+
+    if (!rpcErr && rpcData && typeof rpcData === "object" && "restaurant" in rpcData) {
+      const payload = rpcData as unknown as PublicMenu & {
+        subscription?: Subscription;
+      };
+      const plan = payload.subscription
+        ? effectivePlan(payload.subscription.plan, payload.subscription.expires_at)
+        : "FREE";
+      return {
+        ...payload,
+        show_nexmenu_branding: !PLANS[plan].hideBranding,
+      };
+    }
+
     const { data: restaurant, error: restErr } = await this.client
       .from("restaurants")
       .select("*")

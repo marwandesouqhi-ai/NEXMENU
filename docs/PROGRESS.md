@@ -323,3 +323,40 @@
 6. **E2E & Lighthouse Status (CONFIRMED):** Playwright browser binaries were not installed and E2E tests were never run in CI.
 7. **SEO Domain & Sitemaps (CONFIRMED):** `robots.txt` points to fake domain `https://nexmenu.local/sitemap.xml`, and no dynamic sitemap or edge pre-rendering functions exist.
 
+---
+
+## Phase B: Supabase Security & Correctness Hardening
+
+**Status: COMPLETED**
+**Date: 2026-10-12**
+
+### Work Done
+1. **Security Migration (`supabase/migrations/007_security_and_correctness.sql`):**
+   - **Privilege Escalation Protection:**
+     - Created trigger `protect_profile_sensitive_columns` that rejects updates to `platform_role`, `id`, or `email` unless executed by a `SUPER_ADMIN` or system service role.
+     - Revoked column-level update grants on `platform_role`, `id`, and `email` for `authenticated` role.
+   - **Database Sign-up Trigger (`on_auth_user_created`):**
+     - Attached `SECURITY DEFINER` trigger to `auth.users` on `INSERT` to create corresponding `public.profiles` records using metadata safely, resolving sign-up blocks without exposing sensitive columns to client writes.
+   - **Database-Level Last-Owner Invariant:**
+     - Created `protect_last_active_owner` trigger on `public.restaurant_members` that counts active owners for the restaurant before any `DELETE` or `UPDATE` demoting/deactivating an owner, throwing an exception if fewer than 1 active owner remains.
+   - **Atomic Tenant Creation RPC (`create_restaurant`):**
+     - Implemented transactional RPC creating restaurant, owner membership, settings, branding, and subscription in 1 atomic unit, resolving initial creation deadlock.
+   - **Atomic Reordering RPCs (`reorder_categories`, `reorder_products`):**
+     - Implemented transactional reordering functions that verify caller membership and set contiguous `sort_order` values.
+2. **Adapter Client Hardening (`src/data/adapters/supabase/index.ts`):**
+   - `signUp`: Removed illegal client insert of `password_hash`/`password_salt`; delegates profile creation to the database trigger.
+   - `createRestaurant`: Calls `create_restaurant` RPC for atomic tenant provisioning.
+   - `reorderCategories` & `reorderProducts`: Dispatches to atomic database RPCs.
+   - `getPublicMenu`: Calls `get_public_menu` RPC.
+   - `uploadFile`: Scopes file paths to `${restaurantId}/${filename}` matching storage bucket RLS policies.
+   - Client isolation: Configured unique session storage keys during test execution to prevent GoTrueClient collision warnings.
+3. **Automated Verification:**
+   - Added `test:rls` script to `package.json` and test suite `src/test/rls.test.ts` (skips cleanly when live environment variables are absent).
+   - Unit and integration tests pass: 85 passed, 1 skipped.
+
+### Verified
+- [x] `pnpm typecheck` passed (0 errors)
+- [x] `pnpm lint` passed (0 errors)
+- [x] `pnpm test` passed (85 tests passed, 1 skipped)
+- [x] `pnpm build` passed (production build + PWA service worker generated)
+
