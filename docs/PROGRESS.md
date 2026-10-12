@@ -360,3 +360,30 @@
 - [x] `pnpm test` passed (85 tests passed, 1 skipped)
 - [x] `pnpm build` passed (production build + PWA service worker generated)
 
+---
+
+## Phase C: Local Adapter Crypto Hardening
+
+**Status: COMPLETED**
+**Date: 2026-10-12**
+
+### Work Done
+1. **Removed Insecure Fallback Hash (`src/data/adapters/local/crypto.ts`):**
+   - Eliminated the custom 256-bit bitwise mixing fallback (`fallbackHash`).
+   - Standardized strictly on Web Cryptography PBKDF2 with SHA-256 (120,000 iterations).
+   - Added `InsecureContextCryptoError` that triggers fast when `crypto.subtle` is unavailable (e.g. over insecure LAN HTTP IP connections), providing an explicit, informative error stating that HTTPS or localhost is required.
+2. **Added Unit Tests (`src/data/adapters/local/crypto.test.ts` & `src/test/audit/`):**
+   - Verified 256-bit hash and 128-bit salt structure.
+   - Verified deterministic password verification using stored salt.
+   - Verified rejection of incorrect passwords.
+   - Verified fast rejection with `InsecureContextCryptoError` when `crypto.subtle` is disabled/undefined.
+   - Updated audit test `src/test/audit/crypto-incompatibility.test.ts`.
+3. **Automated Verification:**
+   - Test suite grew to 89 passed tests across 14 test suites (1 skipped cleanly).
+
+### Verified
+- [x] `pnpm typecheck` passed (0 errors)
+- [x] `pnpm lint` passed (0 errors)
+- [x] `pnpm test` passed (89 tests passed, 1 skipped)
+- [x] `pnpm build` passed (production build + PWA service worker generated)
+

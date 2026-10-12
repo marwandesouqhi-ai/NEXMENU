@@ -1,37 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { hashPassword } from "@/data/adapters/local/crypto";
+import { hashPassword, InsecureContextCryptoError } from "@/data/adapters/local/crypto";
 
-describe("Phase A Finding 5: Local Crypto Incompatibility Audit", () => {
-  it("proves that fallback hash output is incompatible with standard PBKDF2 verification", async () => {
+describe("Phase A Finding 5 / Phase C: Local Crypto Incompatibility Audit", () => {
+  it("verifies that insecure contexts fail fast with InsecureContextCryptoError and cannot produce weak fallback hashes", async () => {
     // 1. Simulate hashing in an insecure context (crypto.subtle is undefined)
     const originalSubtle = globalThis.crypto?.subtle;
     try {
-      // Force fallback path by temporarily hiding crypto.subtle
+      // Force insecure context by temporarily hiding crypto.subtle
       Object.defineProperty(globalThis.crypto, "subtle", {
         value: undefined,
         configurable: true,
       });
 
-      const fallbackResult = await hashPassword("mySecretPassword123");
-      expect(fallbackResult.hash).toBeDefined();
-      expect(fallbackResult.salt).toBeDefined();
-
-      // 2. Restore crypto.subtle (simulate user now logging in on localhost / HTTPS)
-      Object.defineProperty(globalThis.crypto, "subtle", {
-        value: originalSubtle,
-        configurable: true,
-      });
-
-      // Verify the password using the salt from the fallback hash
-      const secureResult = await hashPassword("mySecretPassword123", fallbackResult.salt);
-
-      // The hashes do not match! This proves the lockout issue across environments.
-      expect(secureResult.hash).not.toEqual(fallbackResult.hash);
+      // Instead of silently producing an incompatible weak hash, it must throw InsecureContextCryptoError
+      await expect(hashPassword("mySecretPassword123")).rejects.toThrow(InsecureContextCryptoError);
     } finally {
       Object.defineProperty(globalThis.crypto, "subtle", {
         value: originalSubtle,
         configurable: true,
       });
     }
+
+    // In a restored/secure context, PBKDF2 hashing works consistently
+    const secureResult = await hashPassword("mySecretPassword123");
+    expect(secureResult.hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(secureResult.salt).toMatch(/^[0-9a-f]{32}$/);
   });
 });
