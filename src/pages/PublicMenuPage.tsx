@@ -30,7 +30,10 @@ export default function PublicMenuPage() {
   const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const branch = params.get("branch") ?? undefined;
   const source = params.get("src") === "qr" ? "qr" : "direct";
-  const query = useQuery({ queryKey: ["public-menu", restaurantSlug, branch], queryFn: () => publicMenuService.get(restaurantSlug, branch) });
+  const query = useQuery({
+    queryKey: ["public-menu", restaurantSlug, branch],
+    queryFn: async () => (await publicMenuService.get(restaurantSlug, branch)) ?? null,
+  });
   const [term, setTerm] = useState("");
   const [category, setCategory] = useState("all");
   const [filter, setFilter] = useState<"all" | "featured" | "popular" | "available">("all");

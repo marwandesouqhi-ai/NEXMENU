@@ -150,8 +150,9 @@ export class LazyDataAdapter implements DataAdapter {
   async saveAuditLog(value: AuditLog): Promise<AuditLog> {
     return (await this.a()).saveAuditLog(value);
   }
-  async getPublicMenu(slug: string, branch?: string): Promise<PublicMenu | undefined> {
-    return (await this.a()).getPublicMenu(slug, branch);
+  async getPublicMenu(slug: string, branch?: string): Promise<PublicMenu | null | undefined> {
+    const res = await (await this.a()).getPublicMenu(slug, branch);
+    return res ?? null;
   }
   async uploadFile(file: File): Promise<string> {
     return (await this.a()).uploadFile(file);

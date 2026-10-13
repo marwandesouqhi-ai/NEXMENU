@@ -243,14 +243,14 @@ export class LocalAdapter implements DataAdapter {
   async saveNotification(value: Notification) { return this.put("notifications", value); }
   async listAuditLogs(restaurantId?: string) { const all = await this.all<AuditLog>("audit_logs"); return restaurantId ? all.filter((item) => item.restaurant_id === restaurantId) : all; }
   async saveAuditLog(value: AuditLog) { return this.put("audit_logs", value); }
-  async getPublicMenu(slug: string, branchSlug?: string): Promise<PublicMenu | undefined> {
+  async getPublicMenu(slug: string, branchSlug?: string): Promise<PublicMenu | null | undefined> {
     const restaurant = (await this.listRestaurants()).find((item) => item.slug === slug && !item.deleted_at);
-    if (!restaurant) return undefined;
+    if (!restaurant) return null;
     const [settings, branding, branches, categories, products, offers, subscription] = await Promise.all([
       this.getSettings(restaurant.id), this.getBranding(restaurant.id), this.listBranches(restaurant.id),
       this.listCategories(restaurant.id), this.listProducts(restaurant.id), this.listOffers(restaurant.id), this.getSubscription(restaurant.id),
     ]);
-    if (!settings || !branding) return undefined;
+    if (!settings || !branding) return null;
     const branch = branchSlug ? branches.find((item) => item.slug === branchSlug || item.id === branchSlug) : branches[0];
     const visibleCategories = categories.filter((item) => item.is_visible && !item.deleted_at).sort((a, b) => a.sort_order - b.sort_order);
     const categoryIds = new Set(visibleCategories.map((item) => item.id));

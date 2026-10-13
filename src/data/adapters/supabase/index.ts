@@ -559,7 +559,7 @@ export class SupabaseAdapter implements DataAdapter {
     return data as AuditLog;
   }
 
-  async getPublicMenu(slug: string, branchSlug?: string): Promise<PublicMenu | undefined> {
+  async getPublicMenu(slug: string, branchSlug?: string): Promise<PublicMenu | null | undefined> {
     const { data: rpcData, error: rpcErr } = await this.client.rpc("get_public_menu", {
       menu_slug: slug,
       branch_slug: branchSlug ?? null,
@@ -585,7 +585,7 @@ export class SupabaseAdapter implements DataAdapter {
       .is("deleted_at", null)
       .maybeSingle();
 
-    if (restErr || !restaurant) return undefined;
+    if (restErr || !restaurant) return null;
 
     const [settings, branding, branches, categories, products, offers, subscription] =
       await Promise.all([
@@ -598,7 +598,7 @@ export class SupabaseAdapter implements DataAdapter {
         this.getSubscription(restaurant.id),
       ]);
 
-    if (!settings || !branding) return undefined;
+    if (!settings || !branding) return null;
 
     const branch = branchSlug
       ? branches.find((b) => b.slug === branchSlug || b.id === branchSlug)

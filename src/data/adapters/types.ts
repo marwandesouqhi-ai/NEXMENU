@@ -49,7 +49,7 @@ export interface DataAdapter {
   saveNotification(value: Notification): Promise<Notification>;
   listAuditLogs(restaurantId?: string): Promise<AuditLog[]>;
   saveAuditLog(value: AuditLog): Promise<AuditLog>;
-  getPublicMenu(slug: string, branch?: string): Promise<PublicMenu | undefined>;
+  getPublicMenu(slug: string, branch?: string): Promise<PublicMenu | null | undefined>;
   uploadFile(file: File): Promise<string>;
   deleteFile(url: string): Promise<void>;
   exportDatabase(): Promise<DatabaseExport>;

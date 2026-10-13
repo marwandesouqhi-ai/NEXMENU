@@ -193,7 +193,7 @@ export const restaurantService = {
   resetLocalData: async (session: Session) => { await authorize(dataAdapter, session, "admin:access"); return dataAdapter.reset(); },
 };
 export const publicMenuService = {
-  get: (slug: string, branch?: string) => dataAdapter.getPublicMenu(slug, branch),
+  get: async (slug: string, branch?: string) => (await dataAdapter.getPublicMenu(slug, branch)) ?? null,
   async track(input: Omit<AnalyticsEvent, "id" | "created_at" | "updated_at">) {
     if (navigator.doNotTrack === "1") return;
     const now = new Date().toISOString();
