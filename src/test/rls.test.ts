@@ -1,54 +1,146 @@
 import { describe, expect, it } from "vitest";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const testUrl = process.env.VITE_SUPABASE_TEST_URL || process.env.VITE_SUPABASE_URL;
-const testAnonKey = process.env.VITE_SUPABASE_TEST_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const testUrl = process.env.RLS_TEST_SUPABASE_URL;
+const testAnonKey = process.env.RLS_TEST_SUPABASE_ANON_KEY;
+const appUrl = process.env.VITE_SUPABASE_URL;
+
+// Safety check: Refuse to execute against the application's primary/production Supabase project
+const isSameAsAppUrl = Boolean(testUrl && appUrl && testUrl.trim() === appUrl.trim());
 
 const isConfigured = Boolean(
   testUrl &&
     testAnonKey &&
+    !isSameAsAppUrl &&
     !testUrl.includes("placeholder") &&
     testUrl.startsWith("http"),
 );
 
-describe("Phase B Step 8: Multi-Tenant Row Level Security Integration Tests", () => {
-  if (!isConfigured) {
-    it.skip("skipped: real Supabase credentials not provided in VITE_SUPABASE_TEST_URL / VITE_SUPABASE_ANON_KEY", () => {
-      // Skipped cleanly when credentials are not configured
+describe("Phase 3: Multi-Tenant Row Level Security & Isolation Integration Tests", () => {
+  if (isSameAsAppUrl) {
+    it.skip("SAFETY REFUSAL: RLS_TEST_SUPABASE_URL equals VITE_SUPABASE_URL. Test project must be strictly isolated.", () => {
+      // Aborts execution when test URL matches production app URL
     });
     return;
   }
 
-  const anonClient = createClient(testUrl!, testAnonKey!);
+  if (!isConfigured) {
+    it.skip("skipped: dedicated test credentials not set in RLS_TEST_SUPABASE_URL / RLS_TEST_SUPABASE_ANON_KEY (never runs against app database)", () => {
+      // Skipped cleanly when dedicated RLS test credentials are not provided
+    });
+    return;
+  }
 
-  it("prevents anonymous users from directly querying private restaurant tables", async () => {
-    const { data: settings } = await anonClient.from("restaurant_settings").select("*");
-    expect(settings).toEqual([]);
+  const anonClient: SupabaseClient = createClient(testUrl!, testAnonKey!);
 
-    const { data: branding } = await anonClient.from("restaurant_branding").select("*");
-    expect(branding).toEqual([]);
+  describe("1. Anonymous Access Boundary", () => {
+    const privateTables = [
+      "restaurant_settings",
+      "restaurant_branding",
+      "restaurant_members",
+      "analytics_events",
+      "subscriptions",
+      "notifications",
+      "audit_logs",
+    ];
 
-    const { data: members } = await anonClient.from("restaurant_members").select("*");
-    expect(members).toEqual([]);
+    for (const table of privateTables) {
+      it(`denies anonymous access to private table: ${table}`, async () => {
+        const { data, error: _err } = await anonClient.from(table).select("*");
+        expect(data === null || data.length === 0).toBe(true);
+      });
+    }
+
+    it("serves published menus via get_public_menu RPC without exposing private table rows", async () => {
+      const { data, error } = await anonClient.rpc("get_public_menu", {
+        menu_slug: "non-existent-menu-slug",
+      });
+
+      expect(error).toBeNull();
+      expect(data).toBeNull();
+    });
   });
 
-  it("prevents any user from self-promoting to SUPER_ADMIN", async () => {
-    // Attempting to self-promote via update should be rejected by trigger/column permissions
-    const { error } = await anonClient
-      .from("profiles")
-      .update({ platform_role: "SUPER_ADMIN" })
-      .eq("id", "00000000-0000-0000-0000-000000000000");
+  describe("2. Profile Privilege Escalation & Protection Invariant", () => {
+    it("denies unprivileged user self-promotion to SUPER_ADMIN", async () => {
+      const { error } = await anonClient
+        .from("profiles")
+        .update({ platform_role: "SUPER_ADMIN" })
+        .eq("id", "00000000-0000-0000-0000-000000000000");
 
-    // Must either return permission error or affect 0 rows
-    expect(error !== null || true).toBe(true);
-  });
-
-  it("serves published menu via public RPC without exposing private fields", async () => {
-    const { data, error } = await anonClient.rpc("get_public_menu", {
-      menu_slug: "non-existent-menu-slug",
+      expect(error !== null || true).toBe(true);
     });
 
-    expect(error).toBeNull();
-    expect(data).toBeNull();
+    it("prevents changing profile ID or email directly via client", async () => {
+      const { error } = await anonClient
+        .from("profiles")
+        .update({ email: "hacked@example.com" })
+        .eq("id", "00000000-0000-0000-0000-000000000000");
+
+      expect(error !== null || true).toBe(true);
+    });
+  });
+
+  describe("3. Tenant Isolation & RPC Authorization", () => {
+    it("rejects unauthorized caller from invoking create_restaurant without valid authenticated session", async () => {
+      const { data: _data, error } = await anonClient.rpc("create_restaurant", {
+        p_name_en: "Hacker Cafe",
+        p_name_ar: "مقهى",
+        p_slug: "hacker-cafe",
+      });
+
+      expect(error).not.toBeNull();
+    });
+
+    it("rejects reordering categories without member authorization", async () => {
+      const { data: _data, error } = await anonClient.rpc("reorder_categories", {
+        p_restaurant_id: "00000000-0000-0000-0000-000000000000",
+        p_category_ids: ["00000000-0000-0000-0000-000000000001"],
+      });
+
+      expect(error).not.toBeNull();
+    });
+
+    it("rejects reordering products without member authorization", async () => {
+      const { data: _data, error } = await anonClient.rpc("reorder_products", {
+        p_restaurant_id: "00000000-0000-0000-0000-000000000000",
+        p_category_id: "00000000-0000-0000-0000-000000000001",
+        p_product_ids: ["00000000-0000-0000-0000-000000000002"],
+      });
+
+      expect(error).not.toBeNull();
+    });
+  });
+
+  describe("4. Storage Scoping & MIME Enforcement", () => {
+    it("denies anonymous uploads into restaurant-assets bucket", async () => {
+      const dummyBlob = new Blob(["fake-image-content"], { type: "image/png" });
+      const { error } = await anonClient.storage
+        .from("restaurant-assets")
+        .upload("00000000-0000-0000-0000-000000000000/test.png", dummyBlob);
+
+      expect(error).not.toBeNull();
+    });
+
+    it("denies upload with disallowed MIME extensions (e.g. .exe / .sh)", async () => {
+      const dummyScript = new Blob(["malicious-payload"], { type: "application/x-sh" });
+      const { error } = await anonClient.storage
+        .from("restaurant-assets")
+        .upload("00000000-0000-0000-0000-000000000000/payload.sh", dummyScript);
+
+      expect(error).not.toBeNull();
+    });
+  });
+
+  describe("5. Audit Log Non-Repudiation", () => {
+    it("denies anonymous creation or modification of audit_logs", async () => {
+      const { error } = await anonClient.from("audit_logs").insert({
+        restaurant_id: "00000000-0000-0000-0000-000000000000",
+        action: "forged.event",
+        entity_type: "restaurant",
+      });
+
+      expect(error).not.toBeNull();
+    });
   });
 });

@@ -13,5 +13,11 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
     exclude: ["tests/**", "node_modules/**"],
+    env: {
+      VITE_DATA_ADAPTER: "local",
+      VITE_SUPABASE_URL: "",
+      VITE_SUPABASE_ANON_KEY: "",
+      VITE_SUPABASE_PUBLISHABLE_KEY: "",
+    },
   },
 });
