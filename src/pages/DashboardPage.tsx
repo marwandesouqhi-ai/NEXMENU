@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { useAuth } from "@/app/AuthContext";
 import { restaurantService } from "@/services/restaurants";
 import { Badge } from "@/components/ui/Badge";
@@ -23,6 +23,7 @@ const TeamSection = lazy(() => import("@/features/dashboard/team/TeamSection"));
 
 export default function DashboardPage() {
   const { section = "overview" } = useParams();
+  const navigate = useNavigate();
   const { session } = useAuth();
 
   const mine = useQuery({
@@ -56,6 +57,10 @@ export default function DashboardPage() {
       <EmptyState
         title="Create your first restaurant"
         body="Complete onboarding to publish your first digital menu."
+        action={{
+          label: "Start Onboarding",
+          onClick: () => navigate("/onboarding"),
+        }}
       />
     );
   }

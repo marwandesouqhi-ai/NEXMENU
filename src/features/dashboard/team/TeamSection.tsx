@@ -13,13 +13,14 @@ export function TeamSection({ data }: { data: DashboardDetails }) {
   const { session } = useAuth();
   const client = useQueryClient();
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"RESTAURANT_MANAGER" | "STAFF">("STAFF");
   const [error, setError] = useState("");
 
   const invite = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
     try {
-      await restaurantService.invite(session!, data.restaurant!.id, email, "STAFF");
+      await restaurantService.invite(session!, data.restaurant!.id, email, role);
       setEmail("");
       await client.invalidateQueries({ queryKey: ["restaurant", data.restaurant!.id] });
     } catch (cause) {
@@ -48,7 +49,7 @@ export function TeamSection({ data }: { data: DashboardDetails }) {
       <Card className="h-fit p-5">
         <h2 className="font-black">Add team member</h2>
         <p className="mt-2 text-xs leading-5 text-[var(--ink-soft)]">
-          Local mode creates a pending membership. No email is sent.
+          Invite a manager (admin) or staff member to manage your restaurant.
         </p>
         <form onSubmit={(event) => void invite(event)} className="mt-5 grid gap-3">
           <Input
@@ -58,10 +59,21 @@ export function TeamSection({ data }: { data: DashboardDetails }) {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
+          <label className="grid gap-1.5 text-xs font-bold text-[var(--ink)]">
+            Role
+            <select
+              className="min-h-11 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-medium"
+              value={role}
+              onChange={(e) => setRole(e.target.value as "RESTAURANT_MANAGER" | "STAFF")}
+            >
+              <option value="RESTAURANT_MANAGER">Manager / Admin (Full menu & settings)</option>
+              <option value="STAFF">Staff (Menu stock & availability)</option>
+            </select>
+          </label>
           {error && <p className="text-xs text-[var(--danger)]">{error}</p>}
           <Button type="submit">
             <Plus className="size-4" />
-            Add as staff
+            Add member
           </Button>
         </form>
       </Card>
