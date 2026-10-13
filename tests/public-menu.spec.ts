@@ -5,9 +5,9 @@ test.describe("Public Menu E2E", () => {
     // Navigate to default seed restaurant (Cafe Moon)
     await page.goto("/r/cafe-moon");
 
-    // Check title and restaurant header
-    await expect(page).toHaveTitle(/Cafe Moon/i);
+    // Check restaurant header and title
     await expect(page.locator("h1")).toContainText("Cafe Moon");
+    await expect(page).toHaveTitle(/Cafe Moon/i);
 
     // Check category navigation tabs
     const nav = page.locator('nav[aria-label="Menu categories"]');
@@ -23,6 +23,9 @@ test.describe("Public Menu E2E", () => {
     await page.clock.install({ time: new Date("2026-01-16T10:00:00Z") });
     await page.goto("/r/cafe-moon");
 
+    // Wait for page to render
+    await expect(page.locator("h1")).toContainText("Cafe Moon");
+
     // Check Open badge is present
     const openBadge = page.locator("header").getByText(/open/i);
     await expect(openBadge).toBeVisible();
@@ -33,6 +36,9 @@ test.describe("Public Menu E2E", () => {
   }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto("/r/cafe-moon");
+
+    // Wait for page to render
+    await expect(page.locator("h1")).toContainText("Cafe Moon");
 
     const mainContainer = page.locator("main.menu-root");
     await expect(mainContainer).toBeVisible();

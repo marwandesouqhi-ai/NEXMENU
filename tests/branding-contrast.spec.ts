@@ -9,6 +9,7 @@ test.describe("Branding Contrast & WCAG Audit E2E", () => {
     await page.fill('input[type="email"]', "owner@cafemoon.local");
     await page.fill('input[type="password"]', "Moon@1234");
     await page.click('button[type="submit"]');
+    await page.waitForURL((url) => !url.pathname.includes("/login"));
 
     // 2. Go to branding
     await page.goto("/dashboard/branding");

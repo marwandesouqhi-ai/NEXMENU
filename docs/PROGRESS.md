@@ -420,3 +420,34 @@
 - [x] `pnpm test` passed (95 tests passed, 1 skipped)
 - [x] `pnpm build` passed (production build + PWA service worker generated)
 
+---
+
+## Phase E: Test Execution & CI Hardening
+
+**Status: COMPLETED**
+**Date: 2026-10-13**
+
+### Work Done
+1. **Playwright Browser Binaries Installation:**
+   - Successfully installed Chromium, Headless Shell, and FFmpeg via `pnpm exec playwright install chromium`.
+2. **E2E Test Execution & Suite Stabilization:**
+   - Resolved dev mode PWA manifest 404 by enabling `devOptions: { enabled: true }` in `vite.config.ts`.
+   - Cleaned `index.html` removing Figma Make comment placeholders and adding valid meta description and production title.
+   - Fixed login race conditions in E2E tests (`admin.spec.ts`, `branding-contrast.spec.ts`, `menu-reorder.spec.ts`) by waiting for authentication navigation to complete.
+   - Updated `admin.spec.ts` to assert accessible cards and combobox controls instead of legacy table rows.
+   - Configured serial test execution (`workers: 1`) to prevent concurrent state corruption in local IndexedDB.
+   - Switched Vitest test runner pool to `threads` in `vitest.config.ts` to prevent Windows worker fork aborts (exit code 134).
+   - Ignored `dev-dist` in `.gitignore` and `eslint.config.js`.
+3. **CI Automation (`.github/workflows/ci.yml`):**
+   - Added `e2e` Playwright job installing dependencies, installing Chromium binaries, executing `pnpm test:e2e`, and uploading artifact traces on failure.
+   - Added `lighthouse` job building production bundles and running `@lhci/cli` audits.
+4. **Automated Verification:**
+   - All 16 Playwright E2E tests passed across Desktop Chromium and Mobile Viewport (375px).
+
+### Verified
+- [x] `pnpm typecheck` passed (0 errors)
+- [x] `pnpm lint` passed (0 errors)
+- [x] `pnpm test` passed (95 tests passed, 1 skipped)
+- [x] `pnpm build` passed (production build + PWA service worker generated)
+- [x] `pnpm test:e2e` passed (16 tests passed across chromium & mobile-viewport)
+

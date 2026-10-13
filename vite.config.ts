@@ -20,6 +20,9 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       VitePWA({
         registerType: 'prompt',
+        devOptions: {
+          enabled: true,
+        },
         includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],
         manifest: {
           name: 'NEXMENU — Digital Menus',

@@ -9,6 +9,7 @@ test.describe("Menu & Product Reordering E2E", () => {
     await page.fill('input[type="email"]', "owner@cafemoon.local");
     await page.fill('input[type="password"]', "Moon@1234");
     await page.click('button[type="submit"]');
+    await page.waitForURL((url) => !url.pathname.includes("/login"));
 
     // 2. Go to menu manager
     await page.goto("/dashboard/menu");
@@ -24,6 +25,6 @@ test.describe("Menu & Product Reordering E2E", () => {
     await moveDownButtons.first().click();
 
     // Product sequence updates smoothly
-    await expect(page.locator("button.group").first()).toBeVisible();
+    await expect(moveDownButtons.first()).toBeVisible();
   });
 });
