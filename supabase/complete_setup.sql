@@ -206,7 +206,7 @@ returns jsonb language sql stable security definer set search_path=public as $$
   ) from public.restaurants r
   join public.restaurant_settings s on s.restaurant_id=r.id
   join public.restaurant_branding rb on rb.restaurant_id=r.id
-  left join public.branches b on b.restaurant_id=r.id and (b.slug=branch_slug or (branch_slug is null and b.id=(select min(id) from public.branches where restaurant_id=r.id)))
+  left join public.branches b on b.restaurant_id=r.id and (b.slug=branch_slug or (branch_slug is null and b.id=(select b2.id from public.branches b2 where b2.restaurant_id=r.id order by b2.created_at asc limit 1)))
   where r.slug=menu_slug and r.status='ACTIVE' and r.menu_status='PUBLISHED' and r.deleted_at is null
 $$;
 grant execute on function public.get_public_menu(text,text) to anon,authenticated;
