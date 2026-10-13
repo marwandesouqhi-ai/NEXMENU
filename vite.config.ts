@@ -102,7 +102,7 @@ export default defineConfig(({ mode }) => {
     },
     preview: {
       host: process.env.VITE_HOST || 'localhost',
-      port: parseInt(process.env.PORT || '5173'),
+      port: parseInt(process.env.PREVIEW_PORT || '4173'),
     },
   }
 })

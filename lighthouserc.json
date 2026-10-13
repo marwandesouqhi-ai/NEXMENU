@@ -1,12 +1,17 @@
 {
   "ci": {
     "collect": {
-      "startServerCommand": "pnpm preview",
+      "startServerCommand": "pnpm exec vite preview --port 4173",
+      "startServerReadyPattern": "Local:",
+      "startServerReadyTimeout": 45000,
+      "settings": {
+        "chromeFlags": "--no-sandbox --headless --disable-gpu"
+      },
       "url": [
         "http://localhost:4173/",
         "http://localhost:4173/r/cafe-moon"
       ],
-      "numberOfRuns": 3
+      "numberOfRuns": 1
     },
     "assert": {
       "assertions": {

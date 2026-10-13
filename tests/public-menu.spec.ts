@@ -20,7 +20,7 @@ test.describe("Public Menu E2E", () => {
 
   test("evaluates OPEN NOW badge with mocked system clock", async ({ page }) => {
     // Mock clock to Friday 12:00 Cairo time (when Friday shift is active)
-    await page.clock.install({ time: new Date("2026-01-16T10:00:00Z") });
+    await page.clock.setFixedTime(new Date("2026-01-16T10:00:00Z"));
     await page.goto("/r/cafe-moon");
 
     // Wait for page to render

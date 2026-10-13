@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "playwright/test";
 
+const testPort = process.env.PLAYWRIGHT_PORT || "5174";
+const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL || `http://localhost:${testPort}`;
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: false,
@@ -8,7 +11,7 @@ export default defineConfig({
   workers: 1,
   reporter: "list",
   use: {
-    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:5173",
+    baseURL,
     trace: "on-first-retry",
   },
   projects: [
@@ -26,9 +29,15 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "pnpm dev",
-    url: "http://localhost:5173",
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    command: `pnpm exec vite --port ${testPort}`,
+    url: baseURL,
+    reuseExistingServer: false,
+    timeout: 60_000,
+    env: {
+      VITE_DATA_ADAPTER: "local",
+      VITE_SUPABASE_URL: "",
+      VITE_SUPABASE_ANON_KEY: "",
+      VITE_SUPABASE_PUBLISHABLE_KEY: "",
+    },
   },
 });

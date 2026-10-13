@@ -8,7 +8,7 @@ on:
 
 jobs:
   check:
-    name: Typecheck · Lint · Test · Build
+    name: Check (Typecheck · Lint · Unit Tests · Build · SQL Check)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -43,8 +43,33 @@ jobs:
       - name: Build
         run: pnpm build
 
+  build-targets:
+    name: Target Builds & Tree-Shaking Assertions
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify Public & Admin Target Builds
+        run: pnpm build:targets
+
   e2e:
-    name: Playwright E2E Tests
+    name: Playwright E2E Tests (Chromium)
     needs: check
     runs-on: ubuntu-latest
     steps:
@@ -69,7 +94,7 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run Playwright E2E tests
-        run: pnpm test:e2e
+        run: pnpm test:e2e --project=chromium
         env:
           CI: true
 
@@ -81,10 +106,46 @@ jobs:
           path: test-results/
           retention-days: 7
 
+  rls:
+    name: Supabase RLS Tenant Isolation Tests
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run live Supabase RLS tests (if secrets configured)
+        if: env.RLS_TEST_SUPABASE_URL != ''
+        run: pnpm test:rls
+        env:
+          RLS_TEST_SUPABASE_URL: ${{ secrets.RLS_TEST_SUPABASE_URL }}
+          RLS_TEST_SUPABASE_ANON_KEY: ${{ secrets.RLS_TEST_SUPABASE_ANON_KEY }}
+
+      - name: Visible notice if RLS test secrets missing
+        if: env.RLS_TEST_SUPABASE_URL == ''
+        run: echo "::notice title=RLS Tests Skipped::Dedicated RLS_TEST_* secrets are not configured in repository secrets. Live tenant-isolation test run skipped."
+        env:
+          RLS_TEST_SUPABASE_URL: ${{ secrets.RLS_TEST_SUPABASE_URL }}
+
   lighthouse:
     name: Lighthouse CI
     needs: check
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4

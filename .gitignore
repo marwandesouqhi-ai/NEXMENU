@@ -8,6 +8,7 @@ build/
 .vite/
 playwright-report/
 test-results/
+.lighthouseci/
 vite.config.*.timestamp-*
 *.tsbuildinfo
 *-debug.log*
