@@ -38,7 +38,10 @@ export class SupabaseAdapter implements DataAdapter {
     }
 
     const url = options?.url ?? import.meta.env.VITE_SUPABASE_URL;
-    const anonKey = options?.anonKey ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const anonKey =
+      options?.anonKey ??
+      import.meta.env.VITE_SUPABASE_ANON_KEY ??
+      import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
     const isTest = import.meta.env.MODE === "test";
     const clientOptions = {
