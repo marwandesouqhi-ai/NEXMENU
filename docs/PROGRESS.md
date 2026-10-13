@@ -11,13 +11,14 @@
 |---|---|:---:|---|---|
 | **Phase 0** | Baseline Audit, Supply-Chain Policy, Vite Scaffolding | **DONE** | `pnpm check` | 0 type errors, Radix UI pinned, lockfile clean |
 | **Phase 1** | SQL Correctness & Migration Drift (F1, F2) | **DONE** | `pnpm sql:check` | Migration 008 created, `002_rls.sql` fixed, bundle synchronized |
-| **Phase 2** | Test Isolation from Live Environment (F3) | **DONE** | `pnpm test` (with live `.env` present) | 103 unit tests passed strictly offline; Supabase credentials stripped |
-| **Phase 3** | Multi-Tenant RLS Security Test Suite (F4) | **DONE** | `pnpm test:rls` | Complete 5-actor multi-tenant isolation scenario written; safety guard verified |
+| **Phase 2** | Test Isolation from Live Environment (F3) | **DONE** | `pnpm test` (with live `.env` present) | 110 unit tests passed strictly offline; Supabase credentials stripped |
+| **Phase 3** | Multi-Tenant RLS Security Test Suite (F4) | **WRITTEN, NOT RUN** | `pnpm test:rls` | Complete 5-actor multi-tenant isolation scenario written; safely skips without test project |
 | **Phase 4** | Bundle Weight & Lazy Dynamic Adapters (F6) | **DONE** | `pnpm build` | `data-*.js` chunk dropped from 230.20 kB to 3.40 kB (**98.5% reduction**) |
 | **Phase 5** | Separate URL for Super Admin Panel (F5) | **DONE** | `node scripts/build-targets-check.mjs` | `public` dist has 0 admin chunks/strings; `admin` dist has 0 public chunks |
 | **Phase 6** | Dynamic SEO Origin Derivation (F7) | **DONE** | `vitest run src/utils/seo.test.ts` | 9/9 SEO tests passed; hardcoded `nexmenu.app` fallback removed |
-| **Phase 7** | Full CI, Playwright E2E & Lighthouse | **DONE** | `playwright test` | **20/20 E2E tests passed** (Desktop + Mobile Chrome) |
+| **Phase 7** | Full CI, Playwright E2E & Lighthouse | **DONE (E2E) / CI** | `playwright test` | **20/20 E2E tests passed**; Lighthouse: NOT VERIFIED in this run (CI automated) |
 | **Phase 8** | Documentation Honesty & Security Architecture (F8) | **DONE** | Manual & Git Audit | `PROGRESS.md`, `SECURITY.md`, `DECISIONS.md`, `BLOCKERS.md` synchronized |
+| **Phase 9** | Security Definer Fix (009) & PGlite Test Suite | **DONE** | `vitest run src/test/sql-*.test.ts` | 8/8 SQL tests passed; 008 flaw reproduced and proved blocked in 009 |
 
 ---
 
@@ -65,7 +66,7 @@
 ---
 
 ### Phase 3: Real Multi-Tenant RLS Security Tests (Finding F4)
-- **Status:** **DONE**
+- **Status:** **WRITTEN, NOT RUN**
 - **Commit:** `e56bfbd` (same commit as Phase 2)
 - **Work Done:**
   - Re-wrote `src/test/rls.test.ts` implementing a multi-tenant test matrix:
@@ -76,6 +77,7 @@
 - **Verification:**
   - `pnpm test:rls` executed and cleanly skipped with explicit message when test credentials are absent.
   - Live execution against remote Supabase test project: **WRITTEN, NOT RUN** (user must provide dedicated test project; documented in `docs/BLOCKERS.md`).
+
 
 ---
 
@@ -136,7 +138,7 @@
   - Configured Lighthouse CI in `lighthouserc.json`.
 - **Measured Verification:**
   - `pnpm test:e2e`: **20 passed out of 20** in 1.4 minutes across Desktop Chromium and Mobile Chrome.
-  - Lighthouse CI: Configured for Linux CI. Local Windows execution timed out on child process socket handshakes; documented in `docs/BLOCKERS.md`.
+  - Lighthouse CI: **NOT VERIFIED in this local run** (Configured for Linux CI in `.github/workflows/ci.yml`; local execution on Windows timed out on child process socket handshakes; documented in `docs/BLOCKERS.md`).
 
 ---
 
@@ -145,9 +147,26 @@
 - **Work Done:**
   - Rewrote `docs/PROGRESS.md` to reflect real execution metrics and commit history.
   - Updated `docs/SECURITY.md` detailing the authoritative RLS security boundary, local mode limitations, and admin URL hardening.
-  - Documented AD-001 through AD-006 in `docs/DECISIONS.md`.
+  - Documented AD-001 through AD-008 in `docs/DECISIONS.md`.
   - Synchronized `docs/BLOCKERS.md` with explicit user instructions.
   - Verified `.env` is git-ignored and `.env.example` contains complete configuration variables.
+
+---
+
+### Phase 9: Security Regression (008) and Fix (009)
+- **Status:** **DONE**
+- **Work Done:**
+  - **The Defect:** Migration 008 defined `protect_profile_sensitive_columns()` as `SECURITY DEFINER` and checked `current_user IN ('postgres', ...)`. In PostgreSQL, inside a `SECURITY DEFINER` function, `current_user` evaluates to the function owner (`postgres`), meaning every client caller passed the check, allowing authenticated users to elevate their `platform_role` to `SUPER_ADMIN`.
+  - **The Fix:** Created `supabase/migrations/009_profile_protection_security_definer_fix.sql`. Evaluates `auth.uid() IS NULL AND session_user NOT IN ('authenticator', 'anon', 'authenticated')`. In PostgreSQL, `session_user` always preserves the actual connection identity.
+  - **Defense in Depth:** Revoked table-level UPDATE on `public.profiles` from `anon, authenticated` and granted `UPDATE (name)` strictly to `authenticated`.
+  - **Deprecated 008 Header:** Marked the trigger function in `008_super_admin_bootstrap_and_menu_fix.sql` as superseded by 009.
+  - **SQL Bundling:** Regenerated `supabase/complete_setup.sql` with `pnpm sql:bundle` and validated with `pnpm sql:check`.
+  - **In-Process PostgreSQL Tests:** Added `@electric-sql/pglite` and:
+    - `src/test/sql-trigger-regression.test.ts`: Extracts raw SQL from 008 & 009; asserts 008 allows authenticated self-promotion (vulnerability reproduced); asserts 009 blocks self-promotion, prevents email/id alterations, allows name updates, allows operator bootstrap, and allows super admin role delegation.
+    - `src/test/sql-migrations-smoke.test.ts`: Replays entire migration chain 001..009 against a clean database and verifies `get_public_menu`.
+- **Measured Results:**
+  - `vitest run src/test/sql-trigger-regression.test.ts src/test/sql-migrations-smoke.test.ts`: **8 passed, 0 failed**.
+  - Total `pnpm test`: **110 passed, 1 skipped**.
 
 ---
 
@@ -158,7 +177,10 @@
 | TypeScript Compiler | `pnpm typecheck` | **0 errors** |
 | ESLint | `pnpm lint` | **0 errors, 0 warnings** |
 | SQL Bundle Check | `pnpm sql:check` | **Passed (synchronized)** |
-| Vitest Unit Suite | `pnpm test` | **103 passed, 1 skipped (offline)** |
+| Vitest Unit & Regression Suite | `pnpm test` | **110 passed, 1 skipped (offline)** |
+| Multi-Tenant RLS Remote Suite | `pnpm test:rls` | **WRITTEN, NOT RUN (safe skip)** |
 | Target Build Checks | `pnpm build:targets` | **Passed (strict isolation verified)** |
-| Playwright E2E Suite | `pnpm test:e2e` | **20 passed, 0 failed** |
+| Playwright E2E Suite | `pnpm test:e2e` | **20 passed, 0 failed (Desktop + Mobile Chrome)** |
+| Lighthouse CI | Linux GitHub Actions | **NOT VERIFIED in this run (CI automated)** |
 | Full Pipeline Check | `pnpm check` | **Passed (exit code 0)** |
+

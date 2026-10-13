@@ -26,7 +26,8 @@ The database schema, Row-Level Security (RLS) policies, indexes, storage buckets
 | `supabase/migrations/005_seed.sql` | System default subscription plans (`FREE`, `BASIC`, `PRO`, `PREMIUM`). |
 | `supabase/migrations/006_subscription_fields.sql` | Date validation constraint (`expires_at >= starts_at`) and notes field. |
 | `supabase/migrations/007_security_and_correctness.sql` | **Critical Security & Invariants:** Privilege escalation protection trigger & column revoke, auth.users sign-up trigger, database-level last active owner protection trigger, and atomic transaction RPCs (`create_restaurant`, `reorder_categories`, `reorder_products`). |
-| `supabase/migrations/008_super_admin_bootstrap_and_menu_fix.sql` | **Operator Bootstrap & Compatibility:** Enhances `protect_profile_sensitive_columns` to permit `platform_role` updates by privileged database roles (`postgres`, `supabase_admin`, `service_role`) while strictly blocking regular client connections, and ensures `get_public_menu` compatibility across existing databases. |
+| `supabase/migrations/008_super_admin_bootstrap_and_menu_fix.sql` | **Operator Bootstrap & Compatibility:** Modifies `get_public_menu` to use deterministic UUID ordering. (Profile trigger superseded by 009). |
+| `supabase/migrations/009_profile_protection_security_definer_fix.sql` | **Critical Security Hardening:** Restricts `protect_profile_sensitive_columns` privileged bypass strictly to `auth.uid() is null AND session_user not in ('authenticator','anon','authenticated')`. Inside SECURITY DEFINER, `session_user` preserves the real client role. Revokes table UPDATE from anon/authenticated and grants UPDATE strictly on `(name)` to authenticated. |
 
 ### Applying Migrations:
 
@@ -41,27 +42,27 @@ The database schema, Row-Level Security (RLS) policies, indexes, storage buckets
 
 ## 3. Bootstrapping the Initial Super Admin
 
-For security reasons, client self-registration can never assign the `SUPER_ADMIN` platform role. Thanks to migration `008`, executing via the Supabase SQL Editor runs as the privileged `postgres` role, allowing direct operator bootstrap without disabling triggers:
+For security reasons, client self-registration can never assign the `SUPER_ADMIN` platform role. Migration `009` securely allows direct operator bootstrap when queries execute from the Supabase Dashboard SQL Editor (running as the database `postgres` role without a client JWT):
 
-1. Sign up normally via the app UI or Supabase Auth with your admin email.
-2. Open the **Supabase Dashboard > SQL Editor**.
-3. Run the following privileged query:
-
-```sql
-UPDATE public.profiles
-SET platform_role = 'SUPER_ADMIN'
-WHERE email = 'admin@yourdomain.com';
-```
-
-4. Verify the role:
-
-```sql
-SELECT id, email, platform_role FROM public.profiles WHERE email = 'admin@yourdomain.com';
-```
+1. **Sign Up:** Register your account normally via the app UI or Supabase Auth.
+2. **Execute Bootstrap Update:** Open the **Supabase Dashboard > SQL Editor** and run:
+   ```sql
+   UPDATE public.profiles
+   SET platform_role = 'SUPER_ADMIN'
+   WHERE email = 'marwandesouqhi@gmail.com';
+   ```
+3. **Verify Target User:**
+   ```sql
+   SELECT id, email, platform_role FROM public.profiles WHERE email = 'marwandesouqhi@gmail.com';
+   ```
+4. **Audit Confirm:** Run a platform-wide check to verify that only authorized super admin accounts exist:
+   ```sql
+   SELECT id, email, platform_role FROM public.profiles WHERE platform_role = 'SUPER_ADMIN';
+   ```
 
 ---
 
-## 3. Environment Configuration
+## 4. Environment Configuration
 
 Create or update `.env.local` in the project root:
 
@@ -81,7 +82,7 @@ When `VITE_DATA_ADAPTER` is omitted or set to `local`, NEXMENU automatically use
 
 ---
 
-## 4. Architecture & Security
+## 5. Architecture & Security
 
 - **Multi-Tenant Isolation:** Enforced via RLS in PostgreSQL and dual-checked in the application service layer (`src/services/authorization.ts`).
 - **Storage:** Product photos and branding logos are stored in the `restaurant-assets` bucket and served over global CDN.

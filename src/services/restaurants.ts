@@ -5,7 +5,7 @@ import { PlanLimitError, ValidationError, NotFoundError } from "@/lib/errors";
 import { slugSchema } from "@/utils/slug";
 import type {
   AnalyticsEvent, AuditLog, Branding, Branch, Category, Membership, Offer, Product,
-  QrCode, Restaurant, RestaurantSettings, Session, Subscription,
+  QrCode, Restaurant, RestaurantSettings, Session,
 } from "@/types/domain";
 
 const updated = <T extends { updated_at: string }>(value: T) => ({ ...value, updated_at: new Date().toISOString() });

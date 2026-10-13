@@ -9,6 +9,10 @@
 
 -- ------------------------------------------------------------------------------
 -- 1. PRIVILEGE ESCALATION TRIGGER UPDATE (Allow privileged DB role bootstrap)
+-- WARNING: The protect_profile_sensitive_columns() implementation below in 008
+-- is SUPERSEDED by 009_profile_protection_security_definer_fix.sql.
+-- Do NOT rely on 008's current_user check (which incorrectly bypassed all callers
+-- inside SECURITY DEFINER). 009 fixes this with session_user check.
 -- ------------------------------------------------------------------------------
 create or replace function public.protect_profile_sensitive_columns()
 returns trigger language plpgsql security definer set search_path = public as $$

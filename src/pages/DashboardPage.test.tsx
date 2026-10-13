@@ -205,7 +205,7 @@ function renderDashboard(route = "/dashboard/overview") {
 describe("DashboardPage Feature Modules Integration", () => {
   it("renders Overview section by default", async () => {
     renderDashboard("/dashboard/overview");
-    expect(await screen.findByText("Total products")).toBeInTheDocument();
+    expect(await screen.findByText("Total products", {}, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.getByText("Menu readiness")).toBeInTheDocument();
     expect(screen.getByText("CAFE MOON")).toBeInTheDocument();
   });

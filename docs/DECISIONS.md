@@ -42,9 +42,17 @@ This document records technical and architectural decisions, rationale, and trad
   - *Effort:* Moderate (~2 days). Requires enrolling TOTP factors via `supabase.auth.mfa.enroll({ factorType: 'totp' })`, rendering QR code with URI, challenging session with `supabase.auth.mfa.challenge()` / `verify()`, and updating `AdminOnly` guard to verify `aal2` (Authenticator Assurance Level 2) via `supabase.auth.mfa.getAuthenticatorAssuranceLevel()`.
   - *Risk:* Low-medium. Potential lockout risk if operator loses TOTP secret before backup codes are generated. Must provide recovery flow or CLI-based emergency MFA factor reset.
 
-## AD-006: Dynamic Origin Resolution Removing Hardcoded Fallback (F7)
-- **Context:** Finding F7 identified that `https://nexmenu.app` was hardcoded as a fallback origin in SEO utilities, canonical links, edge crawlers, and static robots.txt. If deployed to another custom domain or Vercel preview domain, URLs and sitemaps would point to an incorrect external domain.
-- **Decision:** Remove the hardcoded `https://nexmenu.app` fallback across `src/utils/seo.ts`, `api/sitemap.ts`, `api/menu-meta.ts`, and `public/robots.txt`. The site origin is now derived dynamically from `VITE_SITE_URL` env variable, incoming request headers (`x-forwarded-proto` + `x-forwarded-host` or `host`), or `window.location.origin` at runtime. A dedicated Vite plugin `dynamicRobotsPlugin` stamps the correct `Sitemap: ${origin}/sitemap.xml` into the distributed `robots.txt` at build time.
-- **Impact:** Any custom domain, staging environment, or Vercel preview branch automatically generates canonical URLs and sitemaps pointing to its own host.
+## AD-007: In-Process PostgreSQL (@electric-sql/pglite) for Offline SQL & Trigger Verification
+- **Context:** Verifying PostgreSQL triggers and RLS policies previously required either a running external Docker daemon or live remote Supabase credentials. A critical regression was found in 008's `protect_profile_sensitive_columns` where `current_user` evaluated to `postgres` inside `SECURITY DEFINER` functions, granting bypass to all callers.
+- **Decision:** Introduce `@electric-sql/pglite` as a devDependency. PGlite runs genuine PostgreSQL (compiled to WebAssembly) directly in Node.js without network access, external daemons, or credentials. It enables automated, deterministic unit/integration testing of raw SQL migrations in CI and offline environments.
+- **Impact:** 100% offline, zero-network verification of PostgreSQL trigger invariants and security boundaries directly in `pnpm test`.
+
+## AD-008: Resolution of 008 Security Regression via Migration 009 (session_user vs current_user)
+- **Context:** In migration 008, `protect_profile_sensitive_columns` checked `current_user in ('postgres', 'supabase_admin', ...)`. Because the trigger function is declared `SECURITY DEFINER`, PostgreSQL sets `current_user` to the function owner (`postgres`) for ALL callers during execution. Consequently, the privileged bypass evaluated to true for authenticated clients, allowing self-promotion to `SUPER_ADMIN`.
+- **Decision:** Migration 009 overrides `protect_profile_sensitive_columns` using:
+  `auth.uid() is null AND session_user not in ('authenticator', 'anon', 'authenticated')`.
+  Inside `SECURITY DEFINER` functions, `session_user` preserves the actual connected database role, preventing client bypass. Furthermore, as defense-in-depth, table-level `UPDATE` on `public.profiles` is revoked from `anon` and `authenticated`, granting `UPDATE (name)` strictly on the `name` column to `authenticated`.
+- **Impact:** Privileged operators in SQL Editor / CLI can bootstrap the first `SUPER_ADMIN` safely without disabling triggers, while client sessions are strictly blocked from modifying sensitive columns.
+
 
 
