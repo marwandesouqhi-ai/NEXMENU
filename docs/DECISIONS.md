@@ -42,3 +42,9 @@ This document records technical and architectural decisions, rationale, and trad
   - *Effort:* Moderate (~2 days). Requires enrolling TOTP factors via `supabase.auth.mfa.enroll({ factorType: 'totp' })`, rendering QR code with URI, challenging session with `supabase.auth.mfa.challenge()` / `verify()`, and updating `AdminOnly` guard to verify `aal2` (Authenticator Assurance Level 2) via `supabase.auth.mfa.getAuthenticatorAssuranceLevel()`.
   - *Risk:* Low-medium. Potential lockout risk if operator loses TOTP secret before backup codes are generated. Must provide recovery flow or CLI-based emergency MFA factor reset.
 
+## AD-006: Dynamic Origin Resolution Removing Hardcoded Fallback (F7)
+- **Context:** Finding F7 identified that `https://nexmenu.app` was hardcoded as a fallback origin in SEO utilities, canonical links, edge crawlers, and static robots.txt. If deployed to another custom domain or Vercel preview domain, URLs and sitemaps would point to an incorrect external domain.
+- **Decision:** Remove the hardcoded `https://nexmenu.app` fallback across `src/utils/seo.ts`, `api/sitemap.ts`, `api/menu-meta.ts`, and `public/robots.txt`. The site origin is now derived dynamically from `VITE_SITE_URL` env variable, incoming request headers (`x-forwarded-proto` + `x-forwarded-host` or `host`), or `window.location.origin` at runtime. A dedicated Vite plugin `dynamicRobotsPlugin` stamps the correct `Sitemap: ${origin}/sitemap.xml` into the distributed `robots.txt` at build time.
+- **Impact:** Any custom domain, staging environment, or Vercel preview branch automatically generates canonical URLs and sitemaps pointing to its own host.
+
+
