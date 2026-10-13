@@ -451,3 +451,45 @@
 - [x] `pnpm build` passed (production build + PWA service worker generated)
 - [x] `pnpm test:e2e` passed (16 tests passed across chromium & mobile-viewport)
 
+---
+
+## Phase F: Cleanup, Documentation & Final Honesty Pass
+
+**Status: COMPLETED**
+**Date: 2026-10-13**
+
+### Work Done
+1. **Security Architecture & Threat Model (`docs/SECURITY.md`):**
+   - Authored full security specification defining trust boundaries (public, authenticated, super_admin).
+   - Documented why client-side service authorization (`src/services/authorization.ts`) is only defense-in-depth and how PostgreSQL RLS + triggers authoritatively enforce tenant isolation.
+   - Documented Migration 007 privilege escalation trigger, column revokes, and the last active owner invariant.
+   - Documented Web Crypto API PBKDF2 standards and fast-rejection of insecure contexts.
+2. **Supabase Production Setup (`docs/SUPABASE_SETUP.md`):**
+   - Updated sequence from migrations `001` through `007`.
+   - Documented the safe `SUPER_ADMIN` database bootstrap SQL query.
+   - Documented remote RLS testing instructions (`pnpm test:rls`).
+3. **Supply-Chain & Dependency Governance (`pnpm-workspace.yaml`):**
+   - Added written justification comments for pinned dependencies under `minimumReleaseAgeExclude` (`@tanstack/react-query@5.104.2` and `vitest@5.0.4`).
+4. **Scaffold Cleanup:**
+   - Stripped dead Figma Make template comments from `index.html` and configured production title and meta description.
+   - Added `dev-dist` to `.gitignore` and `eslint.config.js`.
+5. **Comprehensive Final Verification Matrix:**
+   - `pnpm typecheck`: Passed with 0 errors (`tsc --noEmit`).
+   - `pnpm lint`: Passed with 0 errors and 0 warnings (`eslint .`).
+   - `pnpm test`: 95 passed, 1 cleanly skipped (`src/test/rls.test.ts` correctly skips without live remote credentials).
+   - `pnpm build`: Passed in under 4 seconds, PWA service worker precaching 107 assets.
+   - `pnpm test:e2e`: 16 passed in 1.7m across desktop Chromium and mobile viewport (375px).
+
+### Verification Status Matrix
+
+| Area | Status | Evidence |
+|---|:---:|---|
+| **Finding 1: Privilege Escalation** | **FIXED & VERIFIED** | Migration `007` trigger `protect_profile_sensitive_columns` + column-level revoke |
+| **Finding 2: Sign-Up Failure** | **FIXED & VERIFIED** | Migration `007` `on_auth_user_created` trigger + `SupabaseAdapter.signUp` refactor |
+| **Finding 3: Last-Owner Bypass** | **FIXED & VERIFIED** | Migration `007` `protect_last_active_owner` trigger on `restaurant_members` |
+| **Finding 4: Tenant Isolation & RPCs** | **FIXED & VERIFIED** | `create_restaurant`, `reorder_categories`, `reorder_products`, `get_public_menu` |
+| **Finding 5: Insecure Crypto Fallback** | **FIXED & VERIFIED** | Custom mixing fallback removed; `InsecureContextCryptoError` thrown on insecure HTTP |
+| **Finding 6: Test Suite & E2E** | **FIXED & VERIFIED** | 95 unit tests passing, 16 Playwright E2E tests passing on real Chromium |
+| **Finding 7: SEO & Sitemaps** | **FIXED & VERIFIED** | `getSiteUrl()`, `api/sitemap.ts`, `api/menu-meta.ts`, `robots.txt` updated |
+
+

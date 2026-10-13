@@ -25,6 +25,7 @@ The database schema, Row-Level Security (RLS) policies, indexes, storage buckets
 | `supabase/migrations/004_storage.sql` | Storage bucket creation (`restaurant-assets`, `product-images`, `branding-assets`) and access policies. |
 | `supabase/migrations/005_seed.sql` | System default subscription plans (`FREE`, `BASIC`, `PRO`, `PREMIUM`). |
 | `supabase/migrations/006_subscription_fields.sql` | Date validation constraint (`expires_at >= starts_at`) and notes field. |
+| `supabase/migrations/007_security_and_correctness.sql` | **Critical Security & Invariants:** Privilege escalation protection trigger & column revoke, auth.users sign-up trigger, database-level last active owner protection trigger, and atomic transaction RPCs (`create_restaurant`, `reorder_categories`, `reorder_products`). |
 
 ### Applying Migrations via Supabase CLI:
 
@@ -33,7 +34,29 @@ supabase link --project-ref <your-project-ref>
 supabase db push
 ```
 
-Alternatively, you can run each SQL file in sequence within the **Supabase Dashboard > SQL Editor**.
+Alternatively, execute migrations `001` through `007` sequentially within the **Supabase Dashboard > SQL Editor**.
+
+---
+
+## 3. Bootstrapping the Initial Super Admin
+
+For security reasons, client self-registration can never assign the `SUPER_ADMIN` platform role. To bootstrap the platform super admin:
+
+1. Sign up normally via the app UI or Supabase Auth with your admin email.
+2. Open the **Supabase Dashboard > SQL Editor**.
+3. Run the following privileged query:
+
+```sql
+UPDATE public.profiles
+SET platform_role = 'SUPER_ADMIN'
+WHERE email = 'admin@yourdomain.com';
+```
+
+4. Verify the role:
+
+```sql
+SELECT id, email, platform_role FROM public.profiles WHERE email = 'admin@yourdomain.com';
+```
 
 ---
 

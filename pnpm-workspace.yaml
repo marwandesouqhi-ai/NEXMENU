@@ -1,3 +1,7 @@
+# Supply-chain security policy:
+# minimumReleaseAge enforces a cooling-off period on newly published npm packages.
+# The entries below are strictly pinned and vetted runtime/test dependencies required
+# for React 19 compatibility (@tanstack/react-query 5.104+) and Vitest 5 testing suite.
 minimumReleaseAgeExclude:
   - '@tanstack/query-core@5.104.2'
   - '@tanstack/react-query@5.104.2'
