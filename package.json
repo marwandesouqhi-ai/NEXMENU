@@ -14,7 +14,9 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:rls": "vitest run src/test/rls.test.ts",
-    "check": "tsc --noEmit && eslint . && vitest run && vite build"
+    "sql:bundle": "node scripts/bundle-sql.mjs",
+    "sql:check": "node scripts/bundle-sql.mjs --check",
+    "check": "tsc --noEmit && eslint . && node scripts/bundle-sql.mjs --check && vitest run && vite build"
   },
   "dependencies": {
     "@fontsource/cairo": "^5.3.0",

@@ -28,6 +28,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: SQL Bundle Check
+        run: pnpm sql:check
+
       - name: Typecheck
         run: pnpm typecheck
 

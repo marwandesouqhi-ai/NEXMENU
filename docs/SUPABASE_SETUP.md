@@ -20,27 +20,28 @@ The database schema, Row-Level Security (RLS) policies, indexes, storage buckets
 | Migration File | Description |
 |---|---|
 | `supabase/migrations/001_initial_schema.sql` | Core schema: profiles, restaurants, members, settings, branding, branches, categories, products, options, offers, qr_codes, analytics, subscriptions, notifications, audit_logs. |
-| `supabase/migrations/002_rls.sql` | Strict multi-tenant Row Level Security policies with helper functions `is_super_admin()` and `is_restaurant_member()`. |
+| `supabase/migrations/002_rls.sql` | Strict multi-tenant Row Level Security policies with helper functions `is_super_admin()` and `is_restaurant_member()`. Includes deterministic `order by created_at asc, id asc limit 1` in `get_public_menu`. |
 | `supabase/migrations/003_indexes.sql` | Foreign key indexes, slug lookup indexes, and sorting performance optimizations. |
 | `supabase/migrations/004_storage.sql` | Storage bucket creation (`restaurant-assets`, `product-images`, `branding-assets`) and access policies. |
 | `supabase/migrations/005_seed.sql` | System default subscription plans (`FREE`, `BASIC`, `PRO`, `PREMIUM`). |
 | `supabase/migrations/006_subscription_fields.sql` | Date validation constraint (`expires_at >= starts_at`) and notes field. |
 | `supabase/migrations/007_security_and_correctness.sql` | **Critical Security & Invariants:** Privilege escalation protection trigger & column revoke, auth.users sign-up trigger, database-level last active owner protection trigger, and atomic transaction RPCs (`create_restaurant`, `reorder_categories`, `reorder_products`). |
+| `supabase/migrations/008_super_admin_bootstrap_and_menu_fix.sql` | **Operator Bootstrap & Compatibility:** Enhances `protect_profile_sensitive_columns` to permit `platform_role` updates by privileged database roles (`postgres`, `supabase_admin`, `service_role`) while strictly blocking regular client connections, and ensures `get_public_menu` compatibility across existing databases. |
 
-### Applying Migrations via Supabase CLI:
+### Applying Migrations:
 
-```bash
-supabase link --project-ref <your-project-ref>
-supabase db push
-```
-
-Alternatively, execute migrations `001` through `007` sequentially within the **Supabase Dashboard > SQL Editor**.
+- **Single Bundle (Recommended):** Generate `supabase/complete_setup.sql` with `pnpm sql:bundle` and paste the entire script into **Supabase Dashboard > SQL Editor**. Verify integrity at any time with `pnpm sql:check`.
+- **Sequential Migrations (CLI):**
+  ```bash
+  supabase link --project-ref <your-project-ref>
+  supabase db push
+  ```
 
 ---
 
 ## 3. Bootstrapping the Initial Super Admin
 
-For security reasons, client self-registration can never assign the `SUPER_ADMIN` platform role. To bootstrap the platform super admin:
+For security reasons, client self-registration can never assign the `SUPER_ADMIN` platform role. Thanks to migration `008`, executing via the Supabase SQL Editor runs as the privileged `postgres` role, allowing direct operator bootstrap without disabling triggers:
 
 1. Sign up normally via the app UI or Supabase Auth with your admin email.
 2. Open the **Supabase Dashboard > SQL Editor**.

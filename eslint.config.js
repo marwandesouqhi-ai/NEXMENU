@@ -17,6 +17,15 @@ export default tseslint.config(
     },
   },
   {
+    files: ["scripts/**/*.mjs", "*.mjs"],
+    languageOptions: {
+      globals: {
+        process: "readonly",
+        console: "readonly",
+      },
+    },
+  },
+  {
     files: ["vite.config.ts"],
     rules: { "@typescript-eslint/no-explicit-any": "off" },
   },
