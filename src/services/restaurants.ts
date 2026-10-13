@@ -170,7 +170,11 @@ export const restaurantService = {
     const restaurant = await dataAdapter.getRestaurant(restaurantId);
     if (!restaurant) throw new ValidationError("Restaurant was not found.");
     const branch = branchId ? (await dataAdapter.listBranches(restaurantId)).find((item) => item.id === branchId) : undefined;
-    const origin = import.meta.env.VITE_APP_ORIGIN || window.location.origin;
+    const origin =
+      import.meta.env.VITE_PUBLIC_SITE_URL ||
+      import.meta.env.VITE_SITE_URL ||
+      import.meta.env.VITE_APP_ORIGIN ||
+      (typeof window !== "undefined" ? window.location.origin : "");
     const target = `${origin}/r/${restaurant.slug}${branch ? `?branch=${branch.slug}&src=qr` : "?src=qr"}`;
     const now = new Date().toISOString();
     const value: QrCode = { id: crypto.randomUUID(), restaurant_id: restaurantId, branch_id: branchId, target_url: target, created_at: now, updated_at: now };

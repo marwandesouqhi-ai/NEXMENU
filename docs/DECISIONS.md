@@ -19,3 +19,26 @@ This document records technical and architectural decisions, rationale, and trad
   - Before: `data` chunk was 230.20 kB (gzip: 59.08 kB).
   - After: `data` chunk dropped to 3.40 kB (gzip: 0.81 kB) — a **98.5% reduction**!
   - Supabase client code is isolated into an on-demand `supabase-*.js` chunk (226.49 kB, gzip: 57.86 kB) downloaded only when cloud mode is enabled.
+
+## AD-004: Dual Deployable Targets (`public` and `admin`)
+- **Context:** Finding F5 observed that `/admin` lived in the same application bundle as the public site, exposing administrative route definitions and assets to public visitors.
+- **Decision:** Introduce `VITE_APP_TARGET` (`all`, `public`, `admin`). When building target `public`:
+  - Route `/admin` is pruned.
+  - Page `@/pages/AdminPage` is aliased to an empty stub component, eliminating admin chunks from public distributions.
+  When building target `admin`:
+  - Only `/login`, `/reset-password`, `/admin`, and 404 routes exist.
+  - Public pages (`PublicMenuPage`, `LandingPage`, `DashboardLayout`, `AnalyticsSection`, etc.) are aliased to empty stubs.
+  - PWA service worker (`VitePWA`) is disabled.
+  - `<meta name="robots" content="noindex,nofollow" />` and disallow-all `robots.txt` are injected.
+  - Non-super-admin users attempting to log into the admin portal are immediately signed out and shown a localized access-denied state (`AdminNotAuthorized`).
+- **Measured Results:**
+  - `build:public` dist has 0 Admin chunks or strings.
+  - `build:admin` dist has 0 public/landing/analytics chunks and 0 service workers.
+
+## AD-005: MFA (Multi-Factor Authentication) for SUPER_ADMIN Deferral
+- **Context:** Super admin accounts control multi-tenant subscriptions and platform-wide configurations. Multi-factor authentication (TOTP) is an important defense-in-depth measure.
+- **Decision:** As instructed by the autonomous execution scope ("MFA for SUPER_ADMIN: do NOT implement; record in DECISIONS.md as a strongly recommended follow-up with the effort/risk"), MFA is deferred to a future phase.
+- **Effort & Risk Assessment:**
+  - *Effort:* Moderate (~2 days). Requires enrolling TOTP factors via `supabase.auth.mfa.enroll({ factorType: 'totp' })`, rendering QR code with URI, challenging session with `supabase.auth.mfa.challenge()` / `verify()`, and updating `AdminOnly` guard to verify `aal2` (Authenticator Assurance Level 2) via `supabase.auth.mfa.getAuthenticatorAssuranceLevel()`.
+  - *Risk:* Low-medium. Potential lockout risk if operator loses TOTP secret before backup codes are generated. Must provide recovery flow or CLI-based emergency MFA factor reset.
+

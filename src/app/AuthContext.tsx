@@ -11,7 +11,7 @@ interface AuthValue {
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
 }
-const AuthContext = createContext<AuthValue | null>(null);
+export const AuthContext = createContext<AuthValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<SafeProfile | null>(null);

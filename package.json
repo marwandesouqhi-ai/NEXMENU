@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:public": "node scripts/build-target.mjs public",
+    "build:admin": "node scripts/build-target.mjs admin",
+    "build:targets": "node scripts/build-targets-check.mjs",
     "preview": "vite preview",
     "format": "oxfmt",
     "lint": "eslint .",

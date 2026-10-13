@@ -20,6 +20,7 @@ import {
   type Subscription,
   type Membership,
 } from "@/types/domain";
+import { getPublicMenuUrl } from "@/app/target";
 
 type Tab = "restaurants" | "users" | "audit";
 
@@ -330,7 +331,15 @@ export default function AdminPage() {
                         </Badge>
                       </div>
                       <p className="text-sm text-[var(--ink-soft)]">
-                        /r/{restaurant.slug} · {restaurant.phone || "No phone"}
+                        <a
+                          href={getPublicMenuUrl(restaurant.slug)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-[var(--accent)] hover:underline"
+                        >
+                          /r/{restaurant.slug}
+                        </a>{" "}
+                        · {restaurant.phone || "No phone"}
                         {sub?.expires_at && ` · Expires ${new Date(sub.expires_at).toLocaleDateString()}`}
                       </p>
                     </div>

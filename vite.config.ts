@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, type Plugin, type PluginOption } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
@@ -8,16 +8,30 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig(({ mode }) => {
   // Development builds get inline sourcemaps for easier debugging.
   const emitSourcemaps = mode === 'development'
+  const appTarget = (process.env.VITE_APP_TARGET || 'all').toLowerCase().trim()
+  const isAdminTarget = appTarget === 'admin'
 
-  return {
-    base: process.env.VITE_BASE_URL ? `${process.env.VITE_BASE_URL}/` : '/',
-    build: {
-      sourcemap: emitSourcemaps ? 'inline' : false,
-      minify: !emitSourcemaps,
-    },
-    plugins: [
-      react(),
-      tailwindcss(),
+  const plugins: PluginOption[] = [
+    react(),
+    tailwindcss(),
+  ]
+
+  if (isAdminTarget) {
+    plugins.push({
+      name: 'virtual-pwa-stub',
+      resolveId(id) {
+        if (id === 'virtual:pwa-register') {
+          return '\0virtual:pwa-register'
+        }
+      },
+      load(id) {
+        if (id === '\0virtual:pwa-register') {
+          return 'export function registerSW() { return () => {}; }'
+        }
+      },
+    })
+  } else {
+    plugins.push(
       VitePWA({
         registerType: 'prompt',
         devOptions: {
@@ -44,18 +58,40 @@ export default defineConfig(({ mode }) => {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
           navigateFallbackDenylist: [/^\/dashboard/, /^\/admin/, /^\/login/, /^\/signup/],
         },
-      }),
-      // Preserved from prototype: replays the last build error to clients that connect
-      // after the initial broadcast so the overlay stays visible on reconnect.
-      devErrorOverlayReplay(),
-      // Preserved from prototype: triggers a full reload when a module loses its React
-      // Refresh boundary (e.g. a component file is replaced with a re-export).
-      reactRefreshBoundaryFallback(),
-    ],
+      })
+    )
+  }
+
+  plugins.push(targetHardeningPlugin(appTarget))
+  plugins.push(devErrorOverlayReplay())
+  plugins.push(reactRefreshBoundaryFallback())
+
+  return {
+    base: process.env.VITE_BASE_URL ? `${process.env.VITE_BASE_URL}/` : '/',
+    define: {
+      'import.meta.env.VITE_APP_TARGET': JSON.stringify(appTarget),
+    },
+    build: {
+      sourcemap: emitSourcemaps ? 'inline' : false,
+      minify: !emitSourcemaps,
+    },
+    plugins,
     resolve: {
-      alias: {
-        '@': path.resolve(__dirname, './src'),
-      },
+      alias: [
+        ...(appTarget === 'public'
+          ? [{ find: '@/pages/AdminPage', replacement: path.resolve(__dirname, './src/app/stub.tsx') }]
+          : []),
+        ...(appTarget === 'admin'
+          ? [
+              { find: '@/pages/PublicMenuPage', replacement: path.resolve(__dirname, './src/app/stub.tsx') },
+              { find: '@/pages/LandingPage', replacement: path.resolve(__dirname, './src/app/stub.tsx') },
+              { find: '@/pages/DashboardPage', replacement: path.resolve(__dirname, './src/app/stub.tsx') },
+              { find: '@/pages/OnboardingPage', replacement: path.resolve(__dirname, './src/app/stub.tsx') },
+              { find: '@/layouts/DashboardLayout', replacement: path.resolve(__dirname, './src/app/stub.tsx') },
+            ]
+          : []),
+        { find: '@', replacement: path.resolve(__dirname, './src') },
+      ],
     },
     server: {
       host: process.env.VITE_HOST || 'localhost',
@@ -178,6 +214,47 @@ function reactRefreshBoundaryFallback(): Plugin {
       }
 
       return null
+    },
+  }
+}
+
+function targetHardeningPlugin(target: string): Plugin {
+  const isAdmin = target === 'admin'
+  return {
+    name: 'target-hardening-plugin',
+    transformIndexHtml(html) {
+      if (isAdmin) {
+        let transformed = html
+        transformed = transformed.replace(
+          /<title>.*?<\/title>/i,
+          '<title>NEXMENU — System Administration</title>'
+        )
+        transformed = transformed.replace(
+          /<\/head>/i,
+          '    <meta name="robots" content="noindex,nofollow" />\n  </head>'
+        )
+        transformed = transformed.replace(/<link[^>]*rel=["']manifest["'][^>]*>/gi, '')
+        return transformed
+      }
+      return html
+    },
+    generateBundle() {
+      if (isAdmin) {
+        this.emitFile({
+          type: 'asset',
+          fileName: 'robots.txt',
+          source: 'User-agent: *\nDisallow: /\n',
+        })
+      } else {
+        const siteUrl = process.env.VITE_SITE_URL ? process.env.VITE_SITE_URL.replace(/\/+$/, '') : ''
+        const sitemapLine = siteUrl ? `\nSitemap: ${siteUrl}/sitemap.xml\n` : ''
+        const robotsContent = `# NEXMENU Robots Configuration\nUser-agent: *\nAllow: /\nAllow: /r/\nDisallow: /dashboard\nDisallow: /admin\nDisallow: /login\nDisallow: /signup\nDisallow: /reset-password\nDisallow: /onboarding\n${sitemapLine}`
+        this.emitFile({
+          type: 'asset',
+          fileName: 'robots.txt',
+          source: robotsContent,
+        })
+      }
     },
   }
 }
