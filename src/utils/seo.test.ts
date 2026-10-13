@@ -12,10 +12,19 @@ import type { PublicMenu, RestaurantSettings } from "@/types/domain";
 
 describe("SEO Utilities", () => {
   describe("getSiteUrl", () => {
-    it("returns configured domain or falls back to valid HTTPS URL without trailing slashes", () => {
+    it("returns configured domain or falls back to valid URL without trailing slashes", () => {
       const url = getSiteUrl();
-      expect(url).toMatch(/^https?:\/\//);
       expect(url.endsWith("/")).toBe(false);
+    });
+
+    it("prefers VITE_SITE_URL when provided", () => {
+      const orig = process.env.VITE_SITE_URL;
+      try {
+        process.env.VITE_SITE_URL = "https://custom-domain.com/";
+        expect(getSiteUrl()).toBe("https://custom-domain.com");
+      } finally {
+        process.env.VITE_SITE_URL = orig;
+      }
     });
   });
 

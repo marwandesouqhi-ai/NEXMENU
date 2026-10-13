@@ -13,7 +13,7 @@ export default async function handler(req: Request): Promise<Response> {
   const userAgent = req.headers.get("user-agent") || "";
   const isBot = BOT_USER_AGENTS.test(userAgent);
 
-  const siteUrl = process.env.VITE_SITE_URL || `${url.protocol}//${url.host}`;
+  const siteUrl = (process.env.VITE_SITE_URL || `${url.protocol}//${url.host}`).replace(/\/+$/, "");
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const anonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 

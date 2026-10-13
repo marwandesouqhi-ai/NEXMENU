@@ -28,7 +28,11 @@ export function getSiteUrl(): string {
     typeof process !== "undefined" && process.env?.VITE_SITE_URL
       ? String(process.env.VITE_SITE_URL)
       : undefined;
-  const raw = envUrl || processUrl || "https://nexmenu.app";
+  const runtimeOrigin =
+    typeof window !== "undefined" && window.location?.origin
+      ? window.location.origin
+      : undefined;
+  const raw = envUrl || processUrl || runtimeOrigin || "";
   return raw.replace(/\/+$/, "");
 }
 
