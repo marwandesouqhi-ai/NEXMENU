@@ -187,5 +187,22 @@ export function setupInMemoryDataAdapter() {
   );
   vi.spyOn(dataAdapter, "saveAuditLog").mockImplementation(async (a) => upsert(store.auditLogs, a));
 
+  vi.spyOn(dataAdapter, "getPublicMenu").mockImplementation(async (slug, branch) => {
+    const r = store.restaurants.find((item) => item.slug === slug && !item.deleted_at);
+    if (!r) return undefined;
+    const s = store.settings.find((item) => item.restaurant_id === r.id);
+    const b = store.branding.find((item) => item.restaurant_id === r.id);
+    const br = store.branches.find((item) => item.restaurant_id === r.id && (branch ? item.slug === branch : true));
+    return {
+      restaurant: r,
+      settings: s || { id: "s-1", restaurant_id: r.id, opening_hours: {}, default_locale: "en" as const, created_at: "", updated_at: "" },
+      branding: b || { id: "b-1", restaurant_id: r.id, primary_color: "", secondary_color: "", background_color: "", text_color: "", template: "", radius: "", theme: "", font: "", created_at: "", updated_at: "" },
+      branch: br,
+      categories: store.categories.filter((c) => c.restaurant_id === r.id && c.is_visible && !c.deleted_at),
+      products: store.products.filter((p) => p.restaurant_id === r.id && p.is_visible && !p.deleted_at),
+      offers: store.offers.filter((o) => o.restaurant_id === r.id && o.is_active && !o.deleted_at),
+    };
+  });
+
   return { store, resetStore };
 }
