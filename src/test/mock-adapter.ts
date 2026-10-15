@@ -15,6 +15,7 @@ import type {
   RestaurantSettings,
   Subscription,
   Notification,
+  Session,
 } from "@/types/domain";
 
 const now = "2026-01-01T00:00:00Z";
@@ -49,6 +50,10 @@ export function setupInMemoryDataAdapter() {
     auditLogs: [] as AuditLog[],
   };
 
+  const authListeners: Array<(event: string, session: Session | null) => void> = [];
+  let currentSession: Session | null = null;
+  const resetCode = "123456";
+
   const resetStore = () => {
     store.profiles = [{ ...defaultAdminProfile }];
     store.restaurants = [];
@@ -64,6 +69,8 @@ export function setupInMemoryDataAdapter() {
     store.subscriptions = [];
     store.notifications = [];
     store.auditLogs = [];
+    authListeners.length = 0;
+    currentSession = null;
   };
 
   const upsert = <T extends { id: string }>(list: T[], item: T): T => {
@@ -220,5 +227,47 @@ export function setupInMemoryDataAdapter() {
     };
   });
 
-  return { store, resetStore };
+  vi.spyOn(dataAdapter, "getSession").mockImplementation(async () => currentSession);
+  vi.spyOn(dataAdapter, "signOut").mockImplementation(async () => {
+    currentSession = null;
+    authListeners.forEach((l) => l("SIGNED_OUT", null));
+  });
+  vi.spyOn(dataAdapter, "requestPasswordReset").mockImplementation(async (email) => {
+    if (import.meta.env.VITE_DATA_ADAPTER === "supabase") {
+      return "If an account exists for this email, you will receive password reset instructions.";
+    }
+    const profile = store.profiles.find((p) => p.email === email.toLowerCase());
+    if (!profile) throw new Error("No local account uses that email.");
+    return resetCode;
+  });
+  vi.spyOn(dataAdapter, "resetPassword").mockImplementation(async (email, code, _password) => {
+    if (import.meta.env.VITE_DATA_ADAPTER !== "supabase") {
+      if (code !== resetCode) throw new Error("The development reset code is invalid.");
+      const profile = store.profiles.find((p) => p.email === email.toLowerCase());
+      if (!profile) throw new Error("Profile not found");
+    }
+  });
+  if (dataAdapter.updatePassword) {
+    vi.spyOn(dataAdapter, "updatePassword").mockImplementation(async (_password) => {});
+  }
+  if (dataAdapter.onAuthStateChange) {
+    vi.spyOn(dataAdapter, "onAuthStateChange").mockImplementation((callback) => {
+      authListeners.push(callback);
+      return () => {
+        const idx = authListeners.indexOf(callback);
+        if (idx >= 0) authListeners.splice(idx, 1);
+      };
+    });
+  }
+
+  const triggerAuthEvent = (event: string, session: Session | null = currentSession) => {
+    currentSession = session;
+    authListeners.forEach((listener) => listener(event, session));
+  };
+
+  const setCurrentSession = (s: Session | null) => {
+    currentSession = s;
+  };
+
+  return { store, resetStore, triggerAuthEvent, setCurrentSession };
 }

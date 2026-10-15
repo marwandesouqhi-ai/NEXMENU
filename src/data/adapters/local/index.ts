@@ -131,6 +131,18 @@ export class LocalAdapter implements DataAdapter {
     await db.put("profiles", { ...profile, password_hash: next.hash, password_salt: next.salt, updated_at: new Date().toISOString() });
     await db.delete("meta", saved.id);
   }
+  async updatePassword(password: string): Promise<void> {
+    const session = await this.getSession();
+    if (!session) throw new ValidationError("No active session.");
+    const profile = await this.getProfile(session.profile_id);
+    if (!profile) throw new NotFoundError("Profile not found.");
+    const next = await hashPassword(password);
+    const db = await this.database();
+    await db.put("profiles", { ...profile, password_hash: next.hash, password_salt: next.salt, updated_at: new Date().toISOString() });
+  }
+  onAuthStateChange(_callback: (event: string, session: Session | null) => void): () => void {
+    return () => {};
+  }
   async getProfile(id: string) { return (await this.database()).get("profiles", id); }
   async listProfiles() { return this.all<Profile>("profiles"); }
   async listRestaurants() { return this.all<Restaurant>("restaurants"); }

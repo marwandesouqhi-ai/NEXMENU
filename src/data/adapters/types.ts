@@ -16,6 +16,8 @@ export interface DataAdapter {
   getSession(): Promise<Session | null>;
   requestPasswordReset(email: string): Promise<string>;
   resetPassword(email: string, code: string, password: string): Promise<void>;
+  updatePassword?(password: string): Promise<void>;
+  onAuthStateChange?(callback: (event: string, session: Session | null) => void): () => void;
   getProfile(id: string): Promise<Profile | undefined>;
   listProfiles(): Promise<Profile[]>;
   listRestaurants(): Promise<Restaurant[]>;

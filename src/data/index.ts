@@ -51,6 +51,27 @@ export class LazyDataAdapter implements DataAdapter {
   async resetPassword(email: string, code: string, password: string): Promise<void> {
     return (await this.a()).resetPassword(email, code, password);
   }
+  async updatePassword(password: string): Promise<void> {
+    const adapter = await this.a();
+    if (adapter.updatePassword) {
+      return adapter.updatePassword(password);
+    }
+    return adapter.resetPassword("", "", password);
+  }
+  onAuthStateChange(callback: (event: string, session: Session | null) => void): () => void {
+    let unsub: (() => void) | undefined;
+    let unsubscribed = false;
+    void this.a().then((adapter) => {
+      if (unsubscribed) return;
+      if (adapter.onAuthStateChange) {
+        unsub = adapter.onAuthStateChange(callback);
+      }
+    });
+    return () => {
+      unsubscribed = true;
+      if (unsub) unsub();
+    };
+  }
   async getProfile(id: string): Promise<Profile | undefined> {
     return (await this.a()).getProfile(id);
   }

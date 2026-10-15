@@ -28,6 +28,37 @@ export interface SupabaseAdapterOptions {
   client?: SupabaseClient;
 }
 
+/**
+ * Resolves the origin URL for authentication redirects (such as password recovery),
+ * aligning with src/utils/seo.ts and routing admin builds to the admin origin.
+ */
+export function getResetPasswordOrigin(): string {
+  const isTargetAdmin =
+    typeof import.meta !== "undefined" && import.meta.env?.VITE_APP_TARGET === "admin";
+  const envAdminUrl =
+    typeof import.meta !== "undefined" && import.meta.env?.VITE_ADMIN_SITE_URL
+      ? String(import.meta.env.VITE_ADMIN_SITE_URL)
+      : undefined;
+  const envSiteUrl =
+    typeof import.meta !== "undefined" && import.meta.env?.VITE_SITE_URL
+      ? String(import.meta.env.VITE_SITE_URL)
+      : undefined;
+  const processSiteUrl =
+    typeof process !== "undefined" && process.env?.VITE_SITE_URL
+      ? String(process.env.VITE_SITE_URL)
+      : undefined;
+  const runtimeOrigin =
+    typeof window !== "undefined" && window.location?.origin
+      ? window.location.origin
+      : undefined;
+
+  const raw = isTargetAdmin
+    ? (envAdminUrl || envSiteUrl || processSiteUrl || runtimeOrigin || "")
+    : (envSiteUrl || processSiteUrl || runtimeOrigin || "");
+
+  return raw.replace(/\/+$/, "");
+}
+
 export class SupabaseAdapter implements DataAdapter {
   private client: SupabaseClient;
 
@@ -151,18 +182,50 @@ export class SupabaseAdapter implements DataAdapter {
   }
 
   async requestPasswordReset(email: string): Promise<string> {
-    const { error } = await this.client.auth.resetPasswordForEmail(email);
-    if (error) {
-      throw new ValidationError(error.message);
+    const origin = getResetPasswordOrigin();
+    const redirectTo = origin ? `${origin}/reset-password` : undefined;
+
+    try {
+      await this.client.auth.resetPasswordForEmail(email.toLowerCase().trim(), {
+        redirectTo,
+      });
+    } catch {
+      // Suppress provider/network errors so account existence is never leaked
     }
-    return "Password reset link sent to your email.";
+
+    return "If an account exists for this email, you will receive password reset instructions.";
   }
 
   async resetPassword(_email: string, _code: string, password: string): Promise<void> {
+    await this.updatePassword(password);
+  }
+
+  async updatePassword(password: string): Promise<void> {
     const { error } = await this.client.auth.updateUser({ password });
     if (error) {
       throw new ValidationError(error.message);
     }
+  }
+
+  onAuthStateChange(callback: (event: string, session: Session | null) => void): () => void {
+    const {
+      data: { subscription },
+    } = this.client.auth.onAuthStateChange((event, supaSession) => {
+      let mappedSession: Session | null = null;
+      if (supaSession?.user) {
+        mappedSession = {
+          id: supaSession.access_token,
+          profile_id: supaSession.user.id,
+          expires_at: supaSession.expires_at
+            ? new Date(supaSession.expires_at * 1000).toISOString()
+            : new Date(Date.now() + 30 * 86_400_000).toISOString(),
+        };
+      }
+      callback(event, mappedSession);
+    });
+    return () => {
+      subscription.unsubscribe();
+    };
   }
 
   async getProfile(id: string): Promise<Profile | undefined> {

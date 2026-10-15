@@ -17,4 +17,10 @@ export const authService = {
   },
   requestReset: (email: string) => dataAdapter.requestPasswordReset(email),
   resetPassword: (email: string, code: string, password: string) => dataAdapter.resetPassword(email, code, password),
+  updatePassword: (password: string) =>
+    dataAdapter.updatePassword
+      ? dataAdapter.updatePassword(password)
+      : dataAdapter.resetPassword("", "", password),
+  onAuthStateChange: (callback: (event: string, session: Session | null) => void) =>
+    dataAdapter.onAuthStateChange ? dataAdapter.onAuthStateChange(callback) : () => {},
 };

@@ -24,6 +24,7 @@ export default function AuthPage({ mode }: { mode: "login" | "signup" }) {
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const notice = (location.state as { notice?: string } | null)?.notice;
   if (session) return <Navigate to={IS_ADMIN_TARGET ? "/admin" : "/dashboard"} replace />;
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setError("");
@@ -68,6 +69,7 @@ export default function AuthPage({ mode }: { mode: "login" | "signup" }) {
           {mode === "signup" && <Input label="Your name" value={name} onChange={(e) => setName(e.target.value)} required />}
           <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder={isCloud ? "e.g. name@example.com" : "owner@cafemoon.local"} />
           <div className="relative"><Input label="Password" type={show ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} /><button type="button" onClick={() => setShow(!show)} aria-label={show ? "Hide password" : "Show password"} className="absolute bottom-0 end-0 grid size-11 place-items-center text-[var(--ink-soft)]">{show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}</button></div>
+          {notice && <p role="status" className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm font-medium text-emerald-600 dark:text-emerald-400">{notice}</p>}
           {error && <p role="alert" className="rounded-xl bg-[var(--danger-soft)] p-3 text-sm font-medium text-[var(--danger)]">{error}</p>}
           <Button type="submit" size="lg" loading={busy}>{mode === "login" ? "Sign in" : "Create account"}</Button>
         </form>
