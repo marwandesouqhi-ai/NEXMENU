@@ -19,6 +19,7 @@
 | **Phase 7** | Full CI, Playwright E2E & Lighthouse | **DONE (E2E) / CI** | `playwright test` | **20/20 E2E tests passed**; Lighthouse: NOT VERIFIED in this run (CI automated) |
 | **Phase 8** | Documentation Honesty & Security Architecture (F8) | **DONE** | Manual & Git Audit | `PROGRESS.md`, `SECURITY.md`, `DECISIONS.md`, `BLOCKERS.md` synchronized |
 | **Phase 9** | Security Definer Fix (009) & PGlite Test Suite | **DONE** | `vitest run src/test/sql-*.test.ts` | 8/8 SQL tests passed; 008 flaw reproduced and proved blocked in 009 |
+| **Phase 10** | Baseline Re-Verification & CI Integrity | **DONE** | Full command matrix | 0 type errors, 0 lint errors, 110 tests passed (1 skipped), build clean, 10/10 chromium E2E passed |
 
 ---
 
@@ -167,6 +168,20 @@
 - **Measured Results:**
   - `vitest run src/test/sql-trigger-regression.test.ts src/test/sql-migrations-smoke.test.ts`: **8 passed, 0 failed**.
   - Total `pnpm test`: **110 passed, 1 skipped**.
+
+---
+
+### Phase 10: Baseline Audit & Verification (Pre-Flight)
+- **Status:** **DONE**
+- **Verification Commands & Measured Results:**
+  - `pnpm install --frozen-lockfile`: exit 0 (Already up to date, 2s)
+  - `pnpm typecheck`: exit 0 (`tsc --noEmit`, 0 errors)
+  - `pnpm lint`: exit 0 (`eslint .`, 0 errors, 0 warnings)
+  - `pnpm sql:check`: exit 0 (`supabase/complete_setup.sql is up to date with all migrations`)
+  - `pnpm test`: exit 0 (19 test files passed, 1 skipped; 110 passed, 1 skipped)
+  - `pnpm build`: exit 0 (Vite client build in 3.47s, PWA precache 121 entries)
+  - `pnpm build:targets`: exit 0 (Target isolation verified; admin target has 0 public chunks, public target has 0 admin chunks)
+  - `pnpm test:e2e --project=chromium`: exit 0 (10 passed in 43.7s)
 
 ---
 
