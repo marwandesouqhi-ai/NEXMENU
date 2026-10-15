@@ -1,7 +1,7 @@
 import type {
   AnalyticsEvent, AuditLog, Branding, Branch, Category, DatabaseExport, Membership,
   Notification, Offer, Product, Profile, PublicMenu, QrCode, Restaurant,
-  RestaurantSettings, Session, Subscription,
+  RestaurantSettings, Session, Subscription, Role,
 } from "@/types/domain";
 import type { AuthResult, DataAdapter } from "./adapters/types";
 
@@ -95,6 +95,9 @@ export class LazyDataAdapter implements DataAdapter {
   }
   async deleteMembership(id: string): Promise<void> {
     return (await this.a()).deleteMembership(id);
+  }
+  async inviteMember(restaurantId: string, email: string, role: Exclude<Role, "SUPER_ADMIN">): Promise<Membership> {
+    return (await this.a()).inviteMember(restaurantId, email, role);
   }
   async getSettings(restaurantId: string): Promise<RestaurantSettings | undefined> {
     return (await this.a()).getSettings(restaurantId);

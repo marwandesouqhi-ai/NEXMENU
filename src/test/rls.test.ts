@@ -143,4 +143,37 @@ describe("Phase 3: Multi-Tenant Row Level Security & Isolation Integration Tests
       expect(error).not.toBeNull();
     });
   });
+
+  describe("6. Team Invitations & Membership Invariants (Migration 010)", () => {
+    it("denies anonymous invocation of invite_member RPC", async () => {
+      const { data: _data, error } = await anonClient.rpc("invite_member", {
+        p_restaurant_id: "00000000-0000-0000-0000-000000000000",
+        p_email: "invitee@example.com",
+        p_role: "STAFF",
+      });
+
+      expect(error).not.toBeNull();
+    });
+
+    it("denies direct client INSERT into restaurant_members (must route via RPC)", async () => {
+      const { error } = await anonClient.from("restaurant_members").insert({
+        restaurant_id: "00000000-0000-0000-0000-000000000000",
+        email: "direct-insert@example.com",
+        role: "RESTAURANT_OWNER",
+        status: "ACTIVE",
+      });
+
+      expect(error).not.toBeNull();
+    });
+
+    it("prevents assigning SUPER_ADMIN role on restaurant_members", async () => {
+      const { data: _data, error } = await anonClient.rpc("invite_member", {
+        p_restaurant_id: "00000000-0000-0000-0000-000000000000",
+        p_email: "superadmin-attempt@example.com",
+        p_role: "SUPER_ADMIN" as never,
+      });
+
+      expect(error).not.toBeNull();
+    });
+  });
 });

@@ -15,13 +15,16 @@ export function TeamSection({ data }: { data: DashboardDetails }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"RESTAURANT_MANAGER" | "STAFF">("STAFF");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const invite = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
+    setNotice("");
     try {
       await restaurantService.invite(session!, data.restaurant!.id, email, role);
       setEmail("");
+      setNotice("Invitation created");
       await client.invalidateQueries({ queryKey: ["restaurant", data.restaurant!.id] });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not add member.");
@@ -70,6 +73,11 @@ export function TeamSection({ data }: { data: DashboardDetails }) {
               <option value="STAFF">Staff (Menu stock & availability)</option>
             </select>
           </label>
+          {notice && (
+            <p role="status" className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              {notice}
+            </p>
+          )}
           {error && <p className="text-xs text-[var(--danger)]">{error}</p>}
           <Button type="submit">
             <Plus className="size-4" />

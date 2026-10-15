@@ -18,6 +18,7 @@ import type {
   RestaurantSettings,
   Session,
   Subscription,
+  Role,
 } from "@/types/domain";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { PLANS, effectivePlan } from "@/config/plans";
@@ -293,6 +294,20 @@ export class SupabaseAdapter implements DataAdapter {
   async deleteMembership(id: string): Promise<void> {
     const { error } = await this.client.from("restaurant_members").delete().eq("id", id);
     if (error) throw new ValidationError(error.message);
+  }
+
+  async inviteMember(restaurantId: string, email: string, role: Exclude<Role, "SUPER_ADMIN">): Promise<Membership> {
+    const { data, error } = await this.client.rpc("invite_member", {
+      p_restaurant_id: restaurantId,
+      p_email: email.trim().toLowerCase(),
+      p_role: role,
+    });
+
+    if (error || !data) {
+      throw new ValidationError(error?.message ?? "Failed to invite member.");
+    }
+
+    return data as Membership;
   }
 
   async getSettings(restaurantId: string): Promise<RestaurantSettings | undefined> {

@@ -3,7 +3,7 @@ import type { DataAdapter, AuthResult, StoreName } from "../types";
 import type {
   AnalyticsEvent, AuditLog, Branding, Branch, Category, DatabaseExport, Membership,
   Notification, Offer, Product, Profile, PublicMenu, QrCode, Restaurant,
-  RestaurantSettings, Session, Subscription,
+  RestaurantSettings, Session, Subscription, Role,
 } from "@/types/domain";
 import { hashPassword } from "./crypto";
 import { createSeed } from "./seed";
@@ -151,6 +151,26 @@ export class LocalAdapter implements DataAdapter {
   async listMemberships() { return this.all<Membership>("members"); }
   async saveMembership(value: Membership) { return this.put("members", value); }
   async deleteMembership(id: string) { await (await this.database()).delete("members", id); }
+  async inviteMember(restaurantId: string, email: string, role: Exclude<Role, "SUPER_ADMIN">): Promise<Membership> {
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingMembers = (await this.listMemberships()).filter((m) => m.restaurant_id === restaurantId);
+    if (existingMembers.some((m) => m.email.toLowerCase() === normalizedEmail)) {
+      throw new ValidationError("Member already invited or part of this restaurant.");
+    }
+    const profile = (await this.listProfiles()).find((item) => item.email === normalizedEmail);
+    const now = new Date().toISOString();
+    const value: Membership = {
+      id: crypto.randomUUID(),
+      restaurant_id: restaurantId,
+      profile_id: profile?.id,
+      email: normalizedEmail,
+      role,
+      status: profile ? "ACTIVE" : "PENDING",
+      created_at: now,
+      updated_at: now,
+    };
+    return this.saveMembership(value);
+  }
   async getSettings(restaurantId: string) { return (await this.all<RestaurantSettings>("settings")).find((item) => item.restaurant_id === restaurantId); }
   async saveSettings(value: RestaurantSettings) { return this.put("settings", value); }
   async getBranding(restaurantId: string) { return (await this.all<Branding>("branding")).find((item) => item.restaurant_id === restaurantId); }

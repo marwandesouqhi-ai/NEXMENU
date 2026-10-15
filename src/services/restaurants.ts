@@ -160,10 +160,9 @@ export const restaurantService = {
   },
   async invite(session: Session, restaurantId: string, email: string, role: Membership["role"]) {
     await authorize(dataAdapter, session, "team:write", restaurantId);
-    const now = new Date().toISOString();
-    const profile = (await dataAdapter.listProfiles()).find((item) => item.email === email.toLowerCase());
-    const value: Membership = { id: crypto.randomUUID(), restaurant_id: restaurantId, profile_id: profile?.id, email: email.toLowerCase(), role, status: profile ? "ACTIVE" : "PENDING", created_at: now, updated_at: now };
-    return dataAdapter.saveMembership(value);
+    const member = await dataAdapter.inviteMember(restaurantId, email, role);
+    await audit(session, restaurantId, "member.invited", "member", member.id, { email: member.email, role: member.role });
+    return member;
   },
   async qr(session: Session, restaurantId: string, branchId?: string) {
     await authorize(dataAdapter, session, "qr:write", restaurantId);

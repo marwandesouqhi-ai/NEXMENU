@@ -232,6 +232,29 @@ export function setupInMemoryDataAdapter() {
     currentSession = null;
     authListeners.forEach((l) => l("SIGNED_OUT", null));
   });
+  vi.spyOn(dataAdapter, "inviteMember").mockImplementation(async (restaurantId, email, role) => {
+    const normalizedEmail = email.trim().toLowerCase();
+    const existing = store.memberships.find(
+      (m) => m.restaurant_id === restaurantId && m.email.toLowerCase() === normalizedEmail,
+    );
+    if (existing) {
+      throw new Error("Member already invited or part of this restaurant.");
+    }
+    const profile = store.profiles.find((p) => p.email.toLowerCase() === normalizedEmail);
+    const now = new Date().toISOString();
+    const member: Membership = {
+      id: `mem-${Math.random().toString(36).slice(2, 9)}`,
+      restaurant_id: restaurantId,
+      profile_id: profile?.id,
+      email: normalizedEmail,
+      role,
+      status: profile ? "ACTIVE" : "PENDING",
+      created_at: now,
+      updated_at: now,
+    };
+    store.memberships.push(member);
+    return member;
+  });
   vi.spyOn(dataAdapter, "requestPasswordReset").mockImplementation(async (email) => {
     if (import.meta.env.VITE_DATA_ADAPTER === "supabase") {
       return "If an account exists for this email, you will receive password reset instructions.";

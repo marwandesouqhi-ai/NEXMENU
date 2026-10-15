@@ -3,8 +3,8 @@ import { PGlite } from "@electric-sql/pglite";
 import fs from "node:fs";
 import path from "node:path";
 
-describe("PostgreSQL Full Migrations Smoke Suite (001-009)", { timeout: 30000 }, () => {
-  it("applies the entire migration chain 001..009 to a clean DB and executes get_public_menu", async () => {
+describe("PostgreSQL Full Migrations Smoke Suite (001-010)", { timeout: 30000 }, () => {
+  it("applies the entire migration chain 001..010 to a clean DB and executes get_public_menu", async () => {
     const db = new PGlite();
     try {
       // Setup Supabase environment prerequisites
@@ -13,7 +13,8 @@ describe("PostgreSQL Full Migrations Smoke Suite (001-009)", { timeout: 30000 },
       CREATE TABLE IF NOT EXISTS auth.users (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         email text,
-        raw_user_meta_data jsonb DEFAULT '{}'
+        raw_user_meta_data jsonb DEFAULT '{}',
+        email_confirmed_at timestamptz
       );
       CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
         SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
@@ -70,7 +71,7 @@ describe("PostgreSQL Full Migrations Smoke Suite (001-009)", { timeout: 30000 },
       .filter((f) => f.endsWith(".sql"))
       .sort();
 
-    expect(migrationFiles.length).toBeGreaterThanOrEqual(9);
+    expect(migrationFiles.length).toBeGreaterThanOrEqual(10);
 
     for (const file of migrationFiles) {
       let sql = fs.readFileSync(path.join(migrationDir, file), "utf-8");

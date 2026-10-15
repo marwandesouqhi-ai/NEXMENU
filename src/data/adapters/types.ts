@@ -1,7 +1,7 @@
 import type {
   AnalyticsEvent, AuditLog, Branding, Branch, Category, DatabaseExport, Membership,
   Notification, Offer, Product, Profile, PublicMenu, QrCode, Restaurant,
-  RestaurantSettings, Session, Subscription,
+  RestaurantSettings, Session, Subscription, Role,
 } from "@/types/domain";
 
 export type StoreName = "profiles" | "restaurants" | "members" | "settings" | "branding" |
@@ -26,6 +26,7 @@ export interface DataAdapter {
   listMemberships(): Promise<Membership[]>;
   saveMembership(value: Membership): Promise<Membership>;
   deleteMembership(id: string): Promise<void>;
+  inviteMember(restaurantId: string, email: string, role: Exclude<Role, "SUPER_ADMIN">): Promise<Membership>;
   getSettings(restaurantId: string): Promise<RestaurantSettings | undefined>;
   saveSettings(value: RestaurantSettings): Promise<RestaurantSettings>;
   getBranding(restaurantId: string): Promise<Branding | undefined>;
