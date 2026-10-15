@@ -5,10 +5,10 @@ import type { Role, Session } from "@/types/domain";
 export type Permission =
   | "restaurant:read" | "restaurant:write" | "menu:create" | "menu:update"
   | "menu:delete" | "branding:write" | "team:write" | "analytics:read"
-  | "qr:write" | "subscription:write" | "admin:access";
+  | "qr:write" | "subscription:write" | "subscription:request" | "admin:access";
 const matrix: Record<Role, Permission[]> = {
-  SUPER_ADMIN: ["restaurant:read", "restaurant:write", "menu:create", "menu:update", "menu:delete", "branding:write", "team:write", "analytics:read", "qr:write", "subscription:write", "admin:access"],
-  RESTAURANT_OWNER: ["restaurant:read", "restaurant:write", "menu:create", "menu:update", "menu:delete", "branding:write", "team:write", "analytics:read", "qr:write"],
+  SUPER_ADMIN: ["restaurant:read", "restaurant:write", "menu:create", "menu:update", "menu:delete", "branding:write", "team:write", "analytics:read", "qr:write", "subscription:write", "subscription:request", "admin:access"],
+  RESTAURANT_OWNER: ["restaurant:read", "restaurant:write", "menu:create", "menu:update", "menu:delete", "branding:write", "team:write", "analytics:read", "qr:write", "subscription:request"],
   RESTAURANT_MANAGER: ["restaurant:read", "menu:create", "menu:update", "menu:delete", "analytics:read", "qr:write"],
   STAFF: ["restaurant:read", "menu:update"],
 };

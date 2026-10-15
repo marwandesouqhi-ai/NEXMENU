@@ -5,7 +5,12 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      "@admin": path.resolve(__dirname, "./admin"),
+    },
+  },
   test: {
     environment: "jsdom",
     globals: true,

@@ -284,4 +284,4 @@ export const teamService = {
   },
 };
 
-export { adminService, type AuditLogFilters } from "@/admin/services/adminService";
+export { adminService, type AuditLogFilters } from "@admin/services/adminService";

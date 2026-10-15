@@ -1,7 +1,8 @@
 import type {
   AnalyticsEvent, AuditLog, Branding, Branch, Category, DatabaseExport, Membership,
   Notification, Offer, Product, Profile, PublicMenu, QrCode, Restaurant,
-  RestaurantSettings, Session, Subscription, Role,
+  RestaurantSettings, Session, Subscription, SubscriptionRequest,
+  SubscriptionRequestDecision, Role,
 } from "@/types/domain";
 import type { AuthResult, DataAdapter } from "./adapters/types";
 
@@ -161,6 +162,29 @@ export class LazyDataAdapter implements DataAdapter {
   }
   async saveSubscription(value: Subscription): Promise<Subscription> {
     return (await this.a()).saveSubscription(value);
+  }
+  async listSubscriptionRequests(restaurantId?: string) {
+    return (await this.a()).listSubscriptionRequests(restaurantId);
+  }
+  async createSubscriptionRequest(value: SubscriptionRequest) {
+    return (await this.a()).createSubscriptionRequest(value);
+  }
+  async reviewSubscriptionRequest(
+    requestId: string,
+    decision: SubscriptionRequestDecision,
+    adminNotes: string,
+    reviewerProfileId: string,
+  ) {
+    return (await this.a()).reviewSubscriptionRequest(requestId, decision, adminNotes, reviewerProfileId);
+  }
+  async uploadSubscriptionProof(file: File, restaurantId: string, requestId: string) {
+    return (await this.a()).uploadSubscriptionProof(file, restaurantId, requestId);
+  }
+  async getSubscriptionProofUrl(path: string) {
+    return (await this.a()).getSubscriptionProofUrl(path);
+  }
+  async deleteSubscriptionProof(path: string) {
+    return (await this.a()).deleteSubscriptionProof(path);
   }
   async listNotifications(restaurantId: string): Promise<Notification[]> {
     return (await this.a()).listNotifications(restaurantId);

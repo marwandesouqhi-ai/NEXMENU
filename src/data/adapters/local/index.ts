@@ -3,7 +3,8 @@ import type { DataAdapter, AuthResult, StoreName } from "../types";
 import type {
   AnalyticsEvent, AuditLog, Branding, Branch, Category, DatabaseExport, Membership,
   Notification, Offer, Product, Profile, PublicMenu, QrCode, Restaurant,
-  RestaurantSettings, Session, Subscription, Role,
+  RestaurantSettings, Session, Subscription, SubscriptionRequest,
+  SubscriptionRequestDecision, Role,
 } from "@/types/domain";
 import { hashPassword } from "./crypto";
 import { createSeed } from "./seed";
@@ -11,7 +12,8 @@ import { NotFoundError, ValidationError } from "@/lib/errors";
 import { PLANS, effectivePlan } from "@/config/plans";
 
 type Value = Profile | Restaurant | Membership | RestaurantSettings | Branding | Branch | Category |
-  Product | Offer | QrCode | AnalyticsEvent | Subscription | Notification | AuditLog | Session |
+  Product | Offer | QrCode | AnalyticsEvent | Subscription | SubscriptionRequest |
+  Notification | AuditLog | Session |
   { id: string; value: string } | { id: string; blob: Blob };
 interface LocalSchema extends DBSchema {
   profiles: { key: string; value: Profile };
@@ -26,19 +28,20 @@ interface LocalSchema extends DBSchema {
   qr_codes: { key: string; value: QrCode };
   analytics_events: { key: string; value: AnalyticsEvent };
   subscriptions: { key: string; value: Subscription };
+  subscription_requests: { key: string; value: SubscriptionRequest };
   notifications: { key: string; value: Notification };
   audit_logs: { key: string; value: AuditLog };
   sessions: { key: string; value: Session };
   meta: { key: string; value: { id: string; value: string } };
   files: { key: string; value: { id: string; blob: Blob } };
 }
-const stores: StoreName[] = ["profiles", "restaurants", "members", "settings", "branding", "branches", "categories", "products", "offers", "qr_codes", "analytics_events", "subscriptions", "notifications", "audit_logs"];
+const stores: StoreName[] = ["profiles", "restaurants", "members", "settings", "branding", "branches", "categories", "products", "offers", "qr_codes", "analytics_events", "subscriptions", "subscription_requests", "notifications", "audit_logs"];
 const cleanProfile = ({ password_hash: _hash, password_salt: _salt, ...profile }: Profile) => profile;
 
 export class LocalAdapter implements DataAdapter {
   private db?: IDBPDatabase<LocalSchema>;
   private async database() {
-    if (!this.db) this.db = await openDB<LocalSchema>("nexmenu-local", 2, {
+    if (!this.db) this.db = await openDB<LocalSchema>("nexmenu-local", 3, {
       async upgrade(db, oldVersion, _newVersion, transaction) {
         if (oldVersion < 1) {
           for (const store of [...stores, "sessions", "meta", "files"] as const) db.createObjectStore(store, { keyPath: "id" });
@@ -58,6 +61,9 @@ export class LocalAdapter implements DataAdapter {
               notes: sub.notes ?? "",
             });
           }
+        }
+        if (oldVersion >= 1 && oldVersion < 3 && !db.objectStoreNames.contains("subscription_requests")) {
+          db.createObjectStore("subscription_requests", { keyPath: "id" });
         }
       },
     });
@@ -270,6 +276,117 @@ export class LocalAdapter implements DataAdapter {
       notes: value.notes ?? "",
     };
     return this.put("subscriptions", normalized);
+  }
+  async listSubscriptionRequests(restaurantId?: string) {
+    const requests = await this.all<SubscriptionRequest>("subscription_requests");
+    return requests
+      .filter((request) => !restaurantId || request.restaurant_id === restaurantId)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  }
+  async createSubscriptionRequest(value: SubscriptionRequest) {
+    const pending = (await this.listSubscriptionRequests(value.restaurant_id))
+      .some((request) => request.status === "PENDING");
+    if (pending) throw new ValidationError("A subscription request is already waiting for review.");
+    return this.put("subscription_requests", value);
+  }
+  async reviewSubscriptionRequest(
+    requestId: string,
+    decision: SubscriptionRequestDecision,
+    adminNotes: string,
+    reviewerProfileId: string,
+  ) {
+    const transaction = (await this.database()).transaction(
+      ["subscription_requests", "subscriptions", "notifications", "audit_logs", "members"],
+      "readwrite",
+    );
+    const requestStore = transaction.objectStore("subscription_requests");
+    const request = await requestStore.get(requestId);
+    if (!request) throw new NotFoundError("Subscription request not found.");
+    if (request.status !== "PENDING") throw new ValidationError("This subscription request has already been reviewed.");
+
+    const now = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + 365 * 86_400_000).toISOString();
+    const reviewed: SubscriptionRequest = {
+      ...request,
+      status: decision,
+      reviewer_profile_id: reviewerProfileId,
+      reviewed_at: now,
+      admin_notes: adminNotes,
+      updated_at: now,
+    };
+    await requestStore.put(reviewed);
+
+    if (decision === "APPROVED") {
+      const subscriptions = await transaction.objectStore("subscriptions").getAll();
+      const current = subscriptions.find((item) => item.restaurant_id === request.restaurant_id);
+      await transaction.objectStore("subscriptions").put({
+        id: current?.id ?? crypto.randomUUID(),
+        restaurant_id: request.restaurant_id,
+        plan: request.requested_plan,
+        starts_at: now,
+        expires_at: expiresAt,
+        start_date: now,
+        end_date: expiresAt,
+        status: "ACTIVE",
+        notes: `Approved payment request ${request.id}`,
+        created_at: current?.created_at ?? now,
+        updated_at: now,
+      } satisfies Subscription);
+    }
+
+    const owners = (await transaction.objectStore("members").getAll()).filter(
+      (member) => member.restaurant_id === request.restaurant_id &&
+        member.role === "RESTAURANT_OWNER" && member.status === "ACTIVE" && member.profile_id,
+    );
+    const outcome = decision === "APPROVED" ? "approved" : "rejected";
+    for (const owner of owners) {
+      if (!owner.profile_id) continue;
+      const notification: Notification = {
+        id: crypto.randomUUID(),
+        restaurant_id: request.restaurant_id,
+        profile_id: owner.profile_id,
+        title: `Subscription request ${outcome}`,
+        body: decision === "APPROVED"
+          ? `Your ${request.requested_plan} plan is active until ${new Date(expiresAt).toLocaleDateString()}.`
+          : `Your request for the ${request.requested_plan} plan was not approved.${adminNotes ? ` Admin note: ${adminNotes}` : ""}`,
+        created_at: now,
+        updated_at: now,
+      };
+      await transaction.objectStore("notifications").put(notification);
+    }
+
+    const auditLog: AuditLog = {
+      id: crypto.randomUUID(),
+      restaurant_id: request.restaurant_id,
+      actor_profile_id: reviewerProfileId,
+      actor_role: "SUPER_ADMIN",
+      action: `subscription_request.${outcome}`,
+      entity_type: "subscription_request",
+      entity_id: request.id,
+      metadata: { plan: request.requested_plan },
+      created_at: now,
+      updated_at: now,
+    };
+    await transaction.objectStore("audit_logs").put(auditLog);
+    await transaction.done;
+    return reviewed;
+  }
+  async uploadSubscriptionProof(file: File, restaurantId: string, requestId: string) {
+    if (file.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      throw new ValidationError("Use a JPG, PNG or WebP image smaller than 5MB.");
+    }
+    const extension = file.type === "image/jpeg" ? "jpg" : file.type.split("/")[1];
+    const path = `${restaurantId}/${requestId}/${crypto.randomUUID()}.${extension}`;
+    await (await this.database()).put("files", { id: path, blob: file });
+    return path;
+  }
+  async getSubscriptionProofUrl(path: string) {
+    const file = await (await this.database()).get("files", path);
+    if (!file) throw new NotFoundError("Payment proof was not found.");
+    return URL.createObjectURL(file.blob);
+  }
+  async deleteSubscriptionProof(path: string) {
+    await (await this.database()).delete("files", path);
   }
   async listNotifications(restaurantId: string) { return (await this.all<Notification>("notifications")).filter((item) => item.restaurant_id === restaurantId); }
   async saveNotification(value: Notification) { return this.put("notifications", value); }

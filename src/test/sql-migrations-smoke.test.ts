@@ -3,8 +3,8 @@ import { PGlite } from "@electric-sql/pglite";
 import fs from "node:fs";
 import path from "node:path";
 
-describe("PostgreSQL Full Migrations Smoke Suite (001-010)", { timeout: 30000 }, () => {
-  it("applies the entire migration chain 001..010 to a clean DB and executes get_public_menu", async () => {
+describe("PostgreSQL Full Migrations Smoke Suite (001-011)", { timeout: 30000 }, () => {
+  it("applies the entire migration chain 001..011 to a clean DB and executes get_public_menu", async () => {
     const db = new PGlite();
     try {
       // Setup Supabase environment prerequisites
@@ -71,7 +71,7 @@ describe("PostgreSQL Full Migrations Smoke Suite (001-010)", { timeout: 30000 },
       .filter((f) => f.endsWith(".sql"))
       .sort();
 
-    expect(migrationFiles.length).toBeGreaterThanOrEqual(10);
+    expect(migrationFiles.length).toBeGreaterThanOrEqual(11);
 
     for (const file of migrationFiles) {
       let sql = fs.readFileSync(path.join(migrationDir, file), "utf-8");
@@ -100,6 +100,10 @@ describe("PostgreSQL Full Migrations Smoke Suite (001-010)", { timeout: 30000 },
     expect(res.rows[0].menu.restaurant.name_en).toBe("Smoke Test Cafe");
     expect(res.rows[0].menu.restaurant.slug).toBe("smoke-test-cafe");
     expect(res.rows[0].menu.categories.length).toBe(1);
+    const requestTable = await db.query<{ exists: boolean }>(
+      "select to_regclass('public.subscription_requests') is not null as exists;",
+    );
+    expect(requestTable.rows[0].exists).toBe(true);
     } finally {
       await db.close();
     }

@@ -18,6 +18,8 @@ import type {
   RestaurantSettings,
   Session,
   Subscription,
+  SubscriptionRequest,
+  SubscriptionRequestDecision,
   Role,
 } from "@/types/domain";
 import { NotFoundError, ValidationError } from "@/lib/errors";
@@ -598,6 +600,69 @@ export class SupabaseAdapter implements DataAdapter {
 
     if (error || !data) throw new ValidationError(error?.message ?? "Failed to save subscription.");
     return data as Subscription;
+  }
+
+  async listSubscriptionRequests(restaurantId?: string): Promise<SubscriptionRequest[]> {
+    let query = this.client.from("subscription_requests").select("*").order("created_at", { ascending: false });
+    if (restaurantId) query = query.eq("restaurant_id", restaurantId);
+    const { data, error } = await query;
+    if (error) throw new ValidationError(error.message);
+    return (data ?? []) as SubscriptionRequest[];
+  }
+
+  async createSubscriptionRequest(value: SubscriptionRequest): Promise<SubscriptionRequest> {
+    const { data, error } = await this.client
+      .from("subscription_requests")
+      .insert(value)
+      .select()
+      .single();
+    if (error || !data) throw new ValidationError(error?.message ?? "Failed to submit subscription request.");
+    return data as SubscriptionRequest;
+  }
+
+  async reviewSubscriptionRequest(
+    requestId: string,
+    decision: SubscriptionRequestDecision,
+    adminNotes: string,
+    reviewerProfileId: string,
+  ): Promise<SubscriptionRequest> {
+    const { data, error } = await this.client.rpc("review_subscription_request", {
+      p_request_id: requestId,
+      p_decision: decision,
+      p_admin_notes: adminNotes,
+      p_reviewer_profile_id: reviewerProfileId,
+    });
+    const reviewed = Array.isArray(data) ? data[0] : data;
+    if (error || !reviewed) throw new ValidationError(error?.message ?? "Failed to review subscription request.");
+    return reviewed as SubscriptionRequest;
+  }
+
+  async uploadSubscriptionProof(file: File, restaurantId: string, requestId: string): Promise<string> {
+    if (file.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      throw new ValidationError("Use a JPG, PNG or WebP image smaller than 5MB.");
+    }
+    const extension = file.type === "image/jpeg" ? "jpg" : file.type.split("/")[1];
+    const path = `${restaurantId}/${requestId}/${crypto.randomUUID()}.${extension}`;
+    const { error } = await this.client.storage
+      .from("subscription-proofs")
+      .upload(path, file, { contentType: file.type, upsert: false });
+    if (error) throw new ValidationError(error.message);
+    return path;
+  }
+
+  async getSubscriptionProofUrl(path: string): Promise<string> {
+    const { data, error } = await this.client.storage
+      .from("subscription-proofs")
+      .createSignedUrl(path, 300);
+    if (error || !data?.signedUrl) {
+      throw new ValidationError(error?.message ?? "Could not create a secure payment proof link.");
+    }
+    return data.signedUrl;
+  }
+
+  async deleteSubscriptionProof(path: string): Promise<void> {
+    const { error } = await this.client.storage.from("subscription-proofs").remove([path]);
+    if (error) throw new ValidationError(error.message);
   }
 
   async listNotifications(restaurantId: string): Promise<Notification[]> {

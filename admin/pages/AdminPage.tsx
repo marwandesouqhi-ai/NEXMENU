@@ -6,7 +6,7 @@ import {
   Plus, Search, ShieldAlert, ShieldCheck, UserMinus, Users, X
 } from "lucide-react";
 import { useAuth } from "@/app/AuthContext";
-import { adminService, type AuditLogFilters } from "@/services/restaurants";
+import { adminService, type AuditLogFilters } from "@admin/services/adminService";
 import { Brand } from "@/components/shared/Brand";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -217,10 +217,15 @@ export default function AdminPage() {
             <p className="text-sm font-bold text-[var(--accent)]">PLATFORM CONTROL</p>
             <h1 className="mt-2 text-4xl font-black tracking-[-.045em]">NEXMENU admin</h1>
           </div>
-          <Button variant="secondary" onClick={() => navigate("/dashboard")}>
-            <ArrowLeft className="size-4" />
-            Restaurant dashboard
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" onClick={() => navigate("/crm-admin")}>
+              CRM admin
+            </Button>
+            <Button variant="secondary" onClick={() => navigate("/dashboard")}>
+              <ArrowLeft className="size-4" />
+              Restaurant dashboard
+            </Button>
+          </div>
         </div>
 
         {/* Global Error Banner */}

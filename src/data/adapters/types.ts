@@ -1,12 +1,13 @@
 import type {
   AnalyticsEvent, AuditLog, Branding, Branch, Category, DatabaseExport, Membership,
   Notification, Offer, Product, Profile, PublicMenu, QrCode, Restaurant,
-  RestaurantSettings, Session, Subscription, Role,
+  RestaurantSettings, Session, Subscription, SubscriptionRequest,
+  SubscriptionRequestDecision, Role,
 } from "@/types/domain";
 
 export type StoreName = "profiles" | "restaurants" | "members" | "settings" | "branding" |
   "branches" | "categories" | "products" | "offers" | "qr_codes" | "analytics_events" |
-  "subscriptions" | "notifications" | "audit_logs";
+  "subscriptions" | "subscription_requests" | "notifications" | "audit_logs";
 export interface AuthResult { profile: Omit<Profile, "password_hash" | "password_salt">; session: Session }
 export interface DataAdapter {
   initialize(): Promise<void>;
@@ -48,6 +49,17 @@ export interface DataAdapter {
   listSubscriptions(): Promise<Subscription[]>;
   getSubscription(restaurantId: string): Promise<Subscription | undefined>;
   saveSubscription(value: Subscription): Promise<Subscription>;
+  listSubscriptionRequests(restaurantId?: string): Promise<SubscriptionRequest[]>;
+  createSubscriptionRequest(value: SubscriptionRequest): Promise<SubscriptionRequest>;
+  reviewSubscriptionRequest(
+    requestId: string,
+    decision: SubscriptionRequestDecision,
+    adminNotes: string,
+    reviewerProfileId: string,
+  ): Promise<SubscriptionRequest>;
+  uploadSubscriptionProof(file: File, restaurantId: string, requestId: string): Promise<string>;
+  getSubscriptionProofUrl(path: string): Promise<string>;
+  deleteSubscriptionProof(path: string): Promise<void>;
   listNotifications(restaurantId: string): Promise<Notification[]>;
   saveNotification(value: Notification): Promise<Notification>;
   listAuditLogs(restaurantId?: string): Promise<AuditLog[]>;

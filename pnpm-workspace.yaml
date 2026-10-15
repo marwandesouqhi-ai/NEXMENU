@@ -1,3 +1,6 @@
+# Tesseract's optional postinstall only prints OpenCollective information.
+allowBuilds:
+  tesseract.js: false
 # Supply-chain security policy:
 # minimumReleaseAge enforces a cooling-off period on newly published npm packages.
 # The entries below are strictly pinned and vetted runtime/test dependencies required

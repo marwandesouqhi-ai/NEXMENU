@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { FileDown } from "lucide-react";
 import { useAuth } from "@/app/AuthContext";
 import { restaurantService } from "@/services/restaurants";
 import { Card } from "@/components/ui/Card";
@@ -23,7 +22,7 @@ export function SettingsSection({ data }: { data: DashboardDetails }) {
   };
 
   return (
-    <form onSubmit={(event) => void save(event)} className="grid gap-6 xl:grid-cols-[1fr_.6fr]">
+    <form onSubmit={(event) => void save(event)} className="grid gap-6">
       <Card className="p-6">
         <h2 className="text-xl font-black">Restaurant profile</h2>
         <p className="mt-1 text-sm text-[var(--ink-soft)]">
@@ -87,32 +86,6 @@ export function SettingsSection({ data }: { data: DashboardDetails }) {
         </div>
         <Button type="submit" className="mt-6">
           Save changes
-        </Button>
-      </Card>
-      <Card className="p-6">
-        <h2 className="font-black">Data tools</h2>
-        <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
-          Export this browser’s entire local workspace as JSON.
-        </p>
-        <Button
-          variant="secondary"
-          className="mt-5 w-full"
-          type="button"
-          onClick={() =>
-            void restaurantService.exportData(session!).then((value) => {
-              const url = URL.createObjectURL(
-                new Blob([JSON.stringify(value, null, 2)], { type: "application/json" }),
-              );
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "nexmenu-local-export.json";
-              a.click();
-              URL.revokeObjectURL(url);
-            })
-          }
-        >
-          <FileDown className="size-4" />
-          Export local data
         </Button>
       </Card>
     </form>

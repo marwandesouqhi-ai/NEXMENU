@@ -168,6 +168,25 @@ export interface Subscription extends Entity {
   notes: string;
 }
 
+export type SubscriptionPaymentMethod = "INSTAPAY" | "VODAFONE_CASH" | "FREE";
+export type SubscriptionRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type SubscriptionRequestDecision = Exclude<SubscriptionRequestStatus, "PENDING">;
+
+export interface SubscriptionRequest extends Entity {
+  restaurant_id: string;
+  requester_profile_id: string;
+  requested_plan: PlanCode;
+  payment_method: SubscriptionPaymentMethod;
+  payment_number: string;
+  payment_reference: string;
+  amount: number;
+  proof_path: string | null;
+  status: SubscriptionRequestStatus;
+  reviewer_profile_id: string | null;
+  reviewed_at: string | null;
+  admin_notes: string;
+}
+
 export function getDerivedSubscriptionStatus(
   sub?: Pick<Subscription, "starts_at" | "expires_at" | "status" | "start_date" | "end_date"> | null,
   referenceDate = new Date(),

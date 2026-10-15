@@ -1,6 +1,21 @@
-# NEXMENU Dual-Project Deployment Architecture (Vercel)
+# NEXMENU Dual-Project Deployment Architecture
 
-This guide documents deploying NEXMENU as two decoupled, independently hardened Vercel projects originating from the same GitHub repository.
+This guide documents deploying NEXMENU as two decoupled, independently hardened projects originating from the same GitHub repository. The primary deployment instructions use Vercel; a Netlify preview setup is documented below.
+
+## Netlify Preview Deployment
+
+The two applications can also be previewed as separate Netlify sites connected to the same repository. The repository includes `netlify.toml` for the SPA fallback, security headers, public SEO functions, and `dist` output. Netlify functions are deployed from `api/`.
+
+Create two Netlify sites from the repository and configure each from **Project configuration > Build & deploy > Continuous deployment > Build settings**:
+
+| Site | Build command | Publish directory | Environment |
+|---|---|---|---|
+| Customer preview | `pnpm build:public` | `dist` | `VITE_DATA_ADAPTER=local`, `VITE_SITE_URL=<Netlify preview URL>` |
+| Admin/CRM preview | `pnpm build:admin` | `dist` | `VITE_DATA_ADAPTER=local`, `VITE_SITE_URL=<Netlify admin preview URL>` |
+
+Use the Netlify-provided `*.netlify.app` URLs for previews and do not attach `nexumenu.com` or `admin.nexumenu.com` yet. Local adapter preview data is browser-local demo data and is not shared with customers or connected to production Supabase. Restrict access to the admin preview in Netlify if the account supports site access controls.
+
+Before production launch, apply `supabase/complete_setup.sql`, verify the first `SUPER_ADMIN`, and then replace `VITE_DATA_ADAPTER=local` on both Netlify sites with `supabase`. Set `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (or `VITE_SUPABASE_ANON_KEY`), and the correct public/admin `VITE_SITE_URL` in Netlify environment variables. Never add credentials to Git or paste them into chat. Attach `nexumenu.com` to the customer site and `admin.nexumenu.com` to the CRM site only after the production backend and both sites have been verified.
 
 ---
 
@@ -12,8 +27,8 @@ This guide documents deploying NEXMENU as two decoupled, independently hardened 
 | **`VITE_APP_TARGET`** | `public` | `admin` |
 | **Build Command** | `pnpm build:public` | `pnpm build:admin` |
 | **Output Directory** | `dist` | `dist` |
-| **Exposed Routes** | `/`, `/r/:slug`, `/login`, `/signup`, `/dashboard`, `/onboarding` | `/login`, `/reset-password`, `/admin` (`/` redirects to `/admin`) |
-| **Pruned Code** | `/admin` and `AdminPage` completely removed | Landing, Public Menus, Dashboard, Analytics, PWA Service Worker completely removed |
+| **Exposed Routes** | `/`, `/r/:slug`, `/login`, `/signup`, `/dashboard`, `/onboarding` | `/login`, `/reset-password`, `/admin`, `/crm-admin` (`/` redirects to `/admin`) |
+| **Pruned Code** | Admin and CRM pages completely removed | Landing, Public Menus, Dashboard, Analytics, PWA Service Worker completely removed |
 | **SEO & Crawlers** | Indexed (`robots.txt`, `sitemap.xml`, OpenGraph) | Blocked (`noindex,nofollow` meta, disallow-all `robots.txt`) |
 
 ---
@@ -60,6 +75,7 @@ This guide documents deploying NEXMENU as two decoupled, independently hardened 
    ```
 5. Assign Custom Domain:
    - Add `admin.yourdomain.com` (or use the Vercel default domain `nexmenu-admin.vercel.app`).
+6. The CRM is available at `https://admin.yourdomain.com/crm-admin`; it uses the same Supabase project and credentials as the admin portal. Admin application source files live in the repository-root `admin/` folder.
 
 ---
 
@@ -107,6 +123,12 @@ Because browser `localStorage` sessions and auth callbacks are scoped per origin
    - To enforce strict caching barriers on the admin portal, configure headers in Vercel Project Settings for `nexmenu-admin`:
      - `X-Robots-Tag`: `noindex, nofollow, noarchive`
      - `Cache-Control`: `no-store, no-cache, must-revalidate`
+
+4. **Subscription Receipt OCR:**
+   - The customer portal and CRM read receipt text in the browser using Tesseract.js (English and Arabic).
+   - The browser downloads the OCR runtime and language data from the Tesseract.js CDN; allow access to that CDN if receipt analysis is required.
+   - Receipt images are analyzed in the browser and are not sent to an OCR provider. If OCR is unavailable, the CRM can still review the original private receipt.
+   - OCR only compares visible text with the configured transfer number and the selected plan price. It cannot verify a completed transfer and must never be treated as proof of payment; a super administrator must confirm receipt in the official payment account before approval.
 
 ---
 

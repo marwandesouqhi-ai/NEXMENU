@@ -78,8 +78,12 @@ export default defineConfig(({ mode }) => {
     plugins,
     resolve: {
       alias: [
+        { find: '@admin', replacement: path.resolve(__dirname, './admin') },
         ...(appTarget === 'public'
-          ? [{ find: '@/pages/AdminPage', replacement: path.resolve(__dirname, './src/app/stub.tsx') }]
+          ? [
+              { find: '@/pages/AdminPage', replacement: path.resolve(__dirname, './src/app/stub.tsx') },
+              { find: '@/pages/CRMAdminPage', replacement: path.resolve(__dirname, './src/app/stub.tsx') },
+            ]
           : []),
         ...(appTarget === 'admin'
           ? [

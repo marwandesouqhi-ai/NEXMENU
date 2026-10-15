@@ -2,7 +2,14 @@ import { dataAdapter } from "@/data";
 import { authorize } from "@/services/authorization";
 import { teamService } from "@/services/restaurants";
 import { ValidationError } from "@/lib/errors";
-import type { AuditLog, Membership, Restaurant, Session, Subscription } from "@/types/domain";
+import type {
+  AuditLog,
+  Membership,
+  Restaurant,
+  Session,
+  Subscription,
+  SubscriptionRequestDecision,
+} from "@/types/domain";
 
 export interface AuditLogFilters {
   dateFrom?: string;
@@ -47,12 +54,13 @@ async function audit(
 export const adminService = {
   async dashboard(session: Session) {
     await authorize(dataAdapter, session, "admin:access");
-    const [restaurants, profiles, events, logs, subscriptions, memberships] = await Promise.all([
+    const [restaurants, profiles, events, logs, subscriptions, subscriptionRequests, memberships] = await Promise.all([
       dataAdapter.listRestaurants(),
       dataAdapter.listProfiles(),
       dataAdapter.listAnalytics(),
       dataAdapter.listAuditLogs(),
       dataAdapter.listSubscriptions(),
+      dataAdapter.listSubscriptionRequests(),
       dataAdapter.listMemberships(),
     ]);
     return {
@@ -61,6 +69,7 @@ export const adminService = {
       events,
       logs,
       subscriptions,
+      subscriptionRequests,
       memberships,
     };
   },
@@ -136,6 +145,27 @@ export const adminService = {
     const saved = await dataAdapter.saveSubscription(value);
     await audit(session, restaurantId, "plan.changed", "subscription", saved.id, { plan });
     return saved;
+  },
+
+  async reviewSubscriptionRequest(
+    session: Session,
+    requestId: string,
+    decision: SubscriptionRequestDecision,
+    adminNotes: string,
+  ) {
+    const auth = await authorize(dataAdapter, session, "admin:access");
+    const saved = await dataAdapter.reviewSubscriptionRequest(
+      requestId,
+      decision,
+      adminNotes.trim(),
+      auth.profileId,
+    );
+    return saved;
+  },
+
+  async subscriptionProofUrl(session: Session, path: string) {
+    await authorize(dataAdapter, session, "admin:access");
+    return dataAdapter.getSubscriptionProofUrl(path);
   },
 
   listMembers: (session: Session, restaurantId: string) => teamService.listMembers(session, restaurantId),

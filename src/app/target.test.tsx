@@ -31,6 +31,7 @@ describe("Per-Target Router structure", () => {
     const routes = createTargetRoutes();
     expect(Array.isArray(routes)).toBe(true);
     expect(routes.length).toBeGreaterThan(0);
+    expect(routes.some((route) => route.path === "/crm-admin")).toBe(true);
   });
 });
 

@@ -10,6 +10,7 @@ const NotFound = lazy(() => import("@/pages/NotFoundPage"));
 
 // Conditionally bind page components to enable compile-time dead-code elimination per build target
 const Admin = !IS_PUBLIC_TARGET ? lazy(() => import("@/pages/AdminPage")) : null;
+const CRMAdmin = !IS_PUBLIC_TARGET ? lazy(() => import("@/pages/CRMAdminPage")) : null;
 const Landing = !IS_ADMIN_TARGET ? lazy(() => import("@/pages/LandingPage")) : null;
 const PublicMenu = !IS_ADMIN_TARGET ? lazy(() => import("@/pages/PublicMenuPage")) : null;
 const Dashboard = !IS_ADMIN_TARGET ? lazy(() => import("@/pages/DashboardPage")) : null;
@@ -26,6 +27,7 @@ export function createTargetRoutes(): RouteObject[] {
       { path: "/login", element: wait(<Auth mode="login" />) },
       { path: "/reset-password", element: wait(<ResetPassword />) },
       { path: "/admin", element: <AdminOnly>{Admin ? wait(<Admin />) : null}</AdminOnly> },
+      { path: "/crm-admin", element: <AdminOnly>{CRMAdmin ? wait(<CRMAdmin />) : null}</AdminOnly> },
       { path: "*", element: wait(<NotFound />) },
     ];
   }
@@ -70,6 +72,7 @@ export function createTargetRoutes(): RouteObject[] {
       ],
     },
     { path: "/admin", element: <AdminOnly>{Admin ? wait(<Admin />) : null}</AdminOnly> },
+    { path: "/crm-admin", element: <AdminOnly>{CRMAdmin ? wait(<CRMAdmin />) : null}</AdminOnly> },
     { path: "*", element: wait(<NotFound />) },
   ];
 }

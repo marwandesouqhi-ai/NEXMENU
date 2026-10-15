@@ -28,6 +28,7 @@ The database schema, Row-Level Security (RLS) policies, indexes, storage buckets
 | `supabase/migrations/007_security_and_correctness.sql` | **Critical Security & Invariants:** Privilege escalation protection trigger & column revoke, auth.users sign-up trigger, database-level last active owner protection trigger, and atomic transaction RPCs (`create_restaurant`, `reorder_categories`, `reorder_products`). |
 | `supabase/migrations/008_super_admin_bootstrap_and_menu_fix.sql` | **Operator Bootstrap & Compatibility:** Modifies `get_public_menu` to use deterministic UUID ordering. (Profile trigger superseded by 009). |
 | `supabase/migrations/009_profile_protection_security_definer_fix.sql` | **Critical Security Hardening:** Restricts `protect_profile_sensitive_columns` privileged bypass strictly to `auth.uid() is null AND session_user not in ('authenticator','anon','authenticated')`. Inside SECURITY DEFINER, `session_user` preserves the real client role. Revokes table UPDATE from anon/authenticated and grants UPDATE strictly on `(name)` to authenticated. |
+| `supabase/migrations/011_subscription_requests.sql` | Private payment-proof bucket, owner-only subscription requests, secure CRM proof viewing, atomic approval/rejection, subscription activation, customer notifications and audit logging. |
 
 ### Applying Migrations:
 

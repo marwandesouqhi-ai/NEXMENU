@@ -161,7 +161,7 @@ vi.mock("@/app/AuthContext", () => ({
 }));
 
 // Mock adminService
-vi.mock("@/services/restaurants", () => ({
+vi.mock("@admin/services/adminService", () => ({
   adminService: {
     dashboard: vi.fn().mockImplementation(async () => ({
       restaurants: mockRestaurants,
